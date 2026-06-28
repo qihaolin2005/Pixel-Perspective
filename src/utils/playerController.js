@@ -26,40 +26,41 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         let dir = 'none';
 
         if (this.cursors.up.isDown && this.cursors.left.isDown) {
-            vx = -2/3 * speed;
-            vy = -1/3 * speed;
-            dir = 'northeast';
+            vy = -1/2 * speed;
+            dir = 'north';
         }
         else if (this.cursors.up.isDown && this.cursors.right.isDown) {
-            vx = 2/3 * speed;
+            vx = speed;
+            dir = 'east';
+        }
+        else if (this.cursors.down.isDown && this.cursors.left.isDown) {
+            vx = -speed;
+            dir = 'west';
+        }
+        else if (this.cursors.down.isDown && this.cursors.right.isDown) {
+
+            vy = 1/2 * speed;
+            dir = 'south';
+        }
+        else if (this.cursors.left.isDown) {
+            vx = -2/3 * speed;
             vy = -1/3 * speed;
             dir = 'northwest';
         }
-        else if (this.cursors.down.isDown && this.cursors.left.isDown) {
-            vx = -2/3 * speed;
+        else if (this.cursors.right.isDown) {
+            vx = 2/3 * speed;
             vy = 1/3 * speed;
             dir = 'southeast';
         }
-        else if (this.cursors.down.isDown && this.cursors.right.isDown) {
-            vx = 2/3 * speed;
-            vy = 1/3 * speed;
-            dir = 'southwest';
-        }
-        else if (this.cursors.left.isDown) {
-            vx = -speed;
-            dir = 'east';
-        }
-        else if (this.cursors.right.isDown) {
-            vx = speed;
-            dir = 'west';
-        }
         else if (this.cursors.up.isDown) {
-            vy = -speed;
-            dir = 'north';
+            vx = 2/3 * speed;
+            vy = -1/3 * speed;
+            dir = 'northeast';
         }
         else if (this.cursors.down.isDown) {
-            vy = speed;
-            dir = 'south';
+            vx = -2/3 * speed;
+            vy = 1/3 * speed;
+            dir = 'southwest';
         }
 
         if (vx !== 0 || vy !== 0) {
@@ -78,7 +79,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     createAnimation() {
 
         const directions = 
-        ['east', 'west', 'south', 'north', 'southeast', 'southwest', 'northeast', 'northwest'];
+        ['west', 'east', 'south', 'north', 'southwest', 'southeast', 'northwest', 'northeast'];
 
         let current = 0;
 
