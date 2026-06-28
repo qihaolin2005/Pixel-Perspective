@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import * as Transformations from "../utils/transformations.js";
-import * as Player from "../player/playerController.js"
+import * as Player from "../player/Player.js"
 import IsoMap from '../map/IsoMap.js';
+import MovementController from '../controllers/MovementController.js';
 
 export default class GameScene extends Phaser.Scene {
 
@@ -25,17 +26,6 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
-        // const map = this.make.tilemap({
-        //     key: 'map',
-        // });
-        // const xOffSet = Transformations.calculateOffset(map.width, map.height, map.tileWidth);
-
-        
-        
-
-        // map.layers.forEach(layer => {
-        //     map.createLayer(layer.name, tileset, xOffSet, 0);
-        // });
 
         const free_tile_set = {tilesetName: 'Free ver', imageName: 'free_ver'};
         const objects = {tilesetName: 'Objects', imageName: 'objects'};
@@ -52,10 +42,15 @@ export default class GameScene extends Phaser.Scene {
         this.cameras.main.setZoom(1);
         this.cameras.main.setBounds(0, 0, isomap.widthInPixels, isomap.heightInPixels);
 
+        console.log(isomap.getFloorLayers());
+        this.movementController = new MovementController(isomap, this.player);
+
+
     }
 
-    update() {
-        this.player.update();
+    update(time, delta) {
+        this.movementController.update(time, delta);
+
     }
     
     

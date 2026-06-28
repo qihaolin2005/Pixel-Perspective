@@ -5,6 +5,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         super(scene, x, y, texture);
         this.scene = scene;
         this.createAnimation();
+        this.setOrigin(0.5, .7);
+
+        this.debugMarker = this.scene.add.rectangle(this.x, this.y, this.height / 4, this.width / 6, 0xff0000);
+        this.debugMarker.setOrigin(.5, -.2);   // marker centered on the point it marks
+        this.debugMarker.setDepth(99999);
     }
 
     addToScene() {
@@ -14,6 +19,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         // this.setCollideWorldBounds(true);
         this.cursors = this.scene.input.keyboard.createCursorKeys();
 
+        //this.body.velocity.normalize(); use this later
+
+
+    }
+
+    debug(){
+        this.debugMarker.setPosition(this.x, this.y);
+    }
+
+    getCurrentLayer() {
+        return 2;
     }
 
     update() {
@@ -63,6 +79,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         if (vx !== 0 || vy !== 0) {
+            
             this.setVelocityX(vx);
             this.setVelocityY(vy);
 
@@ -76,7 +93,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     createAnimation() {
-
         const directions = 
         ['west', 'east', 'south', 'north', 'southwest', 'southeast', 'northwest', 'northeast'];
 

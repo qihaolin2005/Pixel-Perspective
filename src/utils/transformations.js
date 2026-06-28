@@ -32,5 +32,18 @@ export function TiledPixelsToCoords (x, y, tileWidth, tileHeight) {
         y : y / (tileHeight),
         tileWidth: tileWidth,
         tileHeight: tileHeight,
-    }
+    };
+}
+
+export function worldToIsoCoords(x, y, tileWidth, tileHeight, xOffset) {
+    const xMinusY = (x - xOffset) / (tileWidth / 2);
+    const xplusY = y / (tileHeight / 2);
+
+    x = (xMinusY + xplusY) / 2;
+    y = x - xMinusY;
+
+    return {
+        x : Math.floor(x),
+        y : Math.ceil(y),
+    };
 }
