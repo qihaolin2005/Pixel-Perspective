@@ -29,8 +29,8 @@ export function isoCoordsToWorld({x, y, tileWidth, tileHeight}:
  */
 export function TiledPixelsToCoords (x: number, y: number, tileWidth: number, tileHeight: number) {
     return {
-        x : x / (tileWidth / 2),
-        y : y / (tileHeight),
+        x : Math.floor (x / (tileWidth / 2)),
+        y : Math.floor(y / (tileHeight)),
         tileWidth: tileWidth,
         tileHeight: tileHeight,
     };
@@ -44,7 +44,7 @@ export function worldToIsoCoords(x: number, y: number, tileWidth: number, tileHe
     y = x - xMinusY;
 
     return {
-        x : Math.floor(x),
-        y : Math.ceil(y),
+        x : Math.floor(x) - 1,
+        y : Math.floor(y),
     };
 }

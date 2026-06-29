@@ -1,6 +1,6 @@
 import Phaser, { Scene } from 'phaser';
-import * as Transformations from "../utils/transformations.js";
-import GameScene from '../scenes/GameScene.ts';
+import * as Transformations from "../utils/transformations";
+import GameScene from '../scenes/GameScene';
 
 export default class IsoMap {
     private scene: GameScene;
@@ -36,9 +36,14 @@ export default class IsoMap {
             }
             return tileset;
         });
-
-        this.map.layers.forEach(layer => {
-            this.map.createLayer(layer.name, this.tilesets, this.xOffset, 0);
+        
+        // -16s are for offsetting the layer, for some odd reason it needs to be offset idrk
+        this.map.layers.forEach(layerData => {this.map.createLayer(
+                layerData.name,
+                this.tilesets,
+                this.xOffset - 16,
+                -16,
+            );
         });
 
     }

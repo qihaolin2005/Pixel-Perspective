@@ -1,6 +1,6 @@
-import * as Transformations from '../utils/transformations.ts';
-import IsoMap from '../map/IsoMap.ts';
-import Player from '../player/Player.ts';
+import * as Transformations from '../utils/transformations';
+import IsoMap from '../map/IsoMap';
+import Player from '../player/Player';
 
 export default class MovementController {
     private isoMap: IsoMap;
@@ -13,15 +13,6 @@ export default class MovementController {
         this.floorLayers = isoMap.getFloorLayers();
     }
 
-
-    // getInput() {
-    //     return {
-    //         up: this.cursors.up.isDown,
-    //         down: this.cursors.down.isDown,
-    //         left: this.cursors.left.isDown,
-    //         right: this.cursors.right.isDown
-    //     };
-    // }
     update(time: number, delta: number) {
         const speed = 150;
         let vx = 0;
@@ -86,18 +77,20 @@ export default class MovementController {
     }
 
     checkValidMovement(vx: number, vy: number, delta: number) {
-        const currentTileCoords = Transformations.worldToIsoCoords(
-            this.player.x + (vx * delta/1000), this.player.y + (vy * delta/1000),
+
+        for (let i = 0; i < this.player.footprint.length; i++) {
+            let fx = this.player.footprint[i]!.x;
+            let fy = this.player.footprint[i]!.y;
+            let currentTileCoords = Transformations.worldToIsoCoords(
+            this.player.x + 16 + fx + (vx * delta/1000), this.player.y + fy + (vy * delta/1000),
              this.isoMap.tileWidth, this.isoMap.tileHeight,
               this.isoMap.xOffset);
-        //console.log('currentTileCoords', currentTileCoords);
-        const currentTile = this.floorLayers[this.player.getCurrentLayer()].data[currentTileCoords.y][currentTileCoords.x];
-        
-        if (currentTile.properties.walkable) {
-            return true;
-        } else {
-            return false;
+            let currentTile = this.floorLayers[this.player.getCurrentLayer()].data[currentTileCoords.y][currentTileCoords.x];
+            if (!currentTile.properties.walkable) {
+                return false;
+            }
         }
+        return true;
     }
 
 

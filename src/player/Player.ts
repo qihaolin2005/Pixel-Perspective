@@ -2,17 +2,32 @@ import Phaser from 'phaser';
 import GameScene from '../scenes/GameScene';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
-    private debugMarker;
+    private debugMarker: Phaser.GameObjects.Rectangle[];
+    private currPositionMarker: Phaser.GameObjects.Rectangle;
     public cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+    public footprint: {x: number, y: number}[];
 
     constructor (scene: GameScene, x: number, y: number, texture: string) {
         super(scene, x, y, texture);
         this.createAnimation();
-        this.setOrigin(0.5, .7);
+        this.setOrigin(0.5, .8);
 
-        this.debugMarker = this.scene.add.rectangle(this.x, this.y, this.height / 4, this.width / 6, 0xff0000);
-        this.debugMarker.setOrigin(.5, -.2);   // marker centered on the point it marks
-        this.debugMarker.setDepth(99999);
+        this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000).setDepth(99999);
+        this.footprint = this.footprint = [
+            { x: -this.displayWidth / 6, y: 32 },
+            { x:  this.displayWidth / 6, y: 32 }
+        ];
+
+        this.debugMarker = this.footprint.map(offset => {
+            console.log(offset.x);
+            return this.scene.add.rectangle(
+                this.x + offset.x, 
+                this.y + offset.y, 
+                1, 
+                1, 
+                0xff0000
+            ).setDepth(99999);
+        });
         
     }
 
@@ -23,7 +38,15 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     debug(){
-        this.debugMarker.setPosition(this.x, this.y);
+        for (let i = 0; i < this.debugMarker.length; i++) {
+            this.debugMarker[i]!.x = this.x + this.footprint[i]!.x;
+            this.debugMarker[i]!.y = this.y + this.footprint[i]!.y;
+        }
+        this.currPositionMarker.x = this.x;
+        this.currPositionMarker.y = this.y;
+        
+
+        
     }
 
     getCurrentLayer() {
@@ -31,63 +54,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     update() {
-        const speed = 150;
-        this.setVelocity(0);
-
-        let vx = 0;
-        let vy = 0;
-
-        let dir = 'none';
-
-        if (this.cursors.up.isDown && this.cursors.left.isDown) {
-            vx = -2/3 * speed;
-            vy = -1/3 * speed;
-            dir = 'northwest';
-        }
-        else if (this.cursors.up.isDown && this.cursors.right.isDown) {
-            vx = 2/3 * speed;
-            vy = -1/3 * speed;
-            dir = 'northeast';
-        }
-        else if (this.cursors.down.isDown && this.cursors.left.isDown) {
-            vx = -2/3 * speed;
-            vy = 1/3 * speed;
-            dir = 'southwest';
-        }
-        else if (this.cursors.down.isDown && this.cursors.right.isDown) {
-            vx = 2/3 * speed;
-            vy = 1/3 * speed;
-            dir = 'southeast';
-        }
-        else if (this.cursors.left.isDown) {
-            vx = -speed;
-            dir = 'west';
-        }
-        else if (this.cursors.right.isDown) {
-            vx = speed;
-            dir = 'east';
-        }
-        else if (this.cursors.up.isDown) {
-            vy = -speed;
-            dir = 'north';
-        }
-        else if (this.cursors.down.isDown) {
-            vy = speed;
-            dir = 'south';
-        }
-
-        if (vx !== 0 || vy !== 0) {
-            
-            this.setVelocityX(vx);
-            this.setVelocityY(vy);
-
-            this.anims.play(dir, true);
-        }
-        else {
-            this.anims.stop();
-        }
-
-
+        this.debug;
     }
 
     createAnimation() {
