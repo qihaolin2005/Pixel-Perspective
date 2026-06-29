@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import GameScene from './scenes/GameScene.js';
+import GameScene from './scenes/GameScene.ts';
 
-const config = {
+const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
     pixelArt: true,
     roundPixels: true,

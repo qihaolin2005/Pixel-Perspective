@@ -1,27 +1,25 @@
 import Phaser from 'phaser';
+import GameScene from '../scenes/GameScene';
 
-export class Player extends Phaser.Physics.Arcade.Sprite {
-    constructor (scene, x, y, texture) {
+export default class Player extends Phaser.Physics.Arcade.Sprite {
+    private debugMarker;
+    public cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+
+    constructor (scene: GameScene, x: number, y: number, texture: string) {
         super(scene, x, y, texture);
-        this.scene = scene;
         this.createAnimation();
         this.setOrigin(0.5, .7);
 
         this.debugMarker = this.scene.add.rectangle(this.x, this.y, this.height / 4, this.width / 6, 0xff0000);
         this.debugMarker.setOrigin(.5, -.2);   // marker centered on the point it marks
         this.debugMarker.setDepth(99999);
+        
     }
 
     addToScene() {
         this.scene.add.existing(this);
         this.scene.physics.add.existing(this);
-
-        // this.setCollideWorldBounds(true);
-        this.cursors = this.scene.input.keyboard.createCursorKeys();
-
-        //this.body.velocity.normalize(); use this later
-
-
+        this.cursors = this.scene.input.keyboard!.createCursorKeys();
     }
 
     debug(){

@@ -1,11 +1,15 @@
 import Phaser from 'phaser';
 import * as Transformations from "../utils/transformations.js";
-import * as Player from "../player/Player.js"
+import Player from '../player/Player.ts';
+
 import IsoMap from '../map/IsoMap.js';
 import MovementController from '../controllers/MovementController.js';
 
-export default class GameScene extends Phaser.Scene {
 
+export default class GameScene extends Phaser.Scene {
+    private player!: Player;
+    private movementController!: MovementController;
+    
     constructor() {
         super('GameScene');
     }
@@ -36,7 +40,7 @@ export default class GameScene extends Phaser.Scene {
         const spawnWorldPixels = isomap.getSpawnPoint();
         console.log(spawnWorldPixels);
 
-        this.player = new Player.Player(this, spawnWorldPixels.x, spawnWorldPixels.y, 'player_idle');
+        this.player = new Player(this, spawnWorldPixels.x, spawnWorldPixels.y, 'player_idle');
         this.player.addToScene();
 
         this.cameras.main.setZoom(1);
@@ -48,7 +52,7 @@ export default class GameScene extends Phaser.Scene {
 
     }
 
-    update(time, delta) {
+    update(time: number, delta: number) {
         this.movementController.update(time, delta);
 
     }

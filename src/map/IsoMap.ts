@@ -1,0 +1,68 @@
+import Phaser, { Scene } from 'phaser';
+import * as Transformations from "../utils/transformations.js";
+import GameScene from '../scenes/GameScene.ts';
+
+export default class IsoMap {
+    private scene: GameScene;
+    private map: Phaser.Tilemaps.Tilemap;
+    private tilesets: Phaser.Tilemaps.Tileset[];
+
+    public xOffset: integer;
+    public widthInPixels: integer;
+    public heightInPixels: integer;
+    public tileWidth: integer;
+    public tileHeight: integer;
+
+
+
+    constructor(scene: GameScene, key: string, tilesets: { tilesetName: string; imageName: string }[]) {
+        this.scene = scene;
+
+        this.map = this.scene.make.tilemap({ 
+            key: key
+        });
+        this.xOffset = Transformations.calculateOffset(this.map.width, this.map.height, this.map.tileWidth);
+        this.widthInPixels = this.map.widthInPixels;
+        this.heightInPixels = this.map.heightInPixels;
+        this.tileWidth = this.map.tileWidth;
+        this.tileHeight = this.map.tileHeight;
+        
+        this.tilesets = tilesets.map(t => {
+            const tileset = this.map.addTilesetImage(t.tilesetName, t.imageName);
+            if (!tileset) {
+                throw new Error(
+                    `Failed to load tileset: tilesetName="${t.tilesetName}", imageName="${t.imageName}"`
+                );
+            }
+            return tileset;
+        });
+
+        this.map.layers.forEach(layer => {
+            this.map.createLayer(layer.name, this.tilesets, this.xOffset, 0);
+        });
+
+    }
+
+    getSpawnPoint() {
+        const spawnLayer = this.map.getObjectLayer('SpawnPoint');
+        if (!spawnLayer) {
+            throw new Error('Failed to get SpawnLayer');
+        }
+        const spawn = spawnLayer.objects.find(obj => obj.name === 'SpawnPoint');
+        if (!spawn) {
+            throw new Error('Failed to get SpawnPoint');
+        }
+        const spawnTiled = Transformations.TiledPixelsToCoords(spawn.x!, spawn.y!, this.map.tileWidth, this.map.tileHeight);
+        const spawnWorldPixels = Transformations.isoCoordsToWorld(spawnTiled, this.xOffset);
+        return spawnWorldPixels;
+
+    }
+
+    getFloorLayers() {
+    return this.map.layers.filter(layer =>
+        (layer.properties as any[])?.some(
+            (p: any) => p.name === "floor" && p.value === true
+        )
+    );
+}
+}

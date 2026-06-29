@@ -1,23 +1,28 @@
-import * as Transformations from '../utils/transformations.js';
+import * as Transformations from '../utils/transformations.ts';
+import IsoMap from '../map/IsoMap.ts';
+import Player from '../player/Player.ts';
 
 export default class MovementController {
-    
-    constructor(isoMap, player) {
+    private isoMap: IsoMap;
+    private player: Player;
+    private floorLayers: any[];
+
+    constructor(isoMap: IsoMap, player: Player) {
         this.isoMap = isoMap;
         this.player = player;
         this.floorLayers = isoMap.getFloorLayers();
     }
 
 
-    getInput() {
-        return {
-            up: this.cursors.up.isDown,
-            down: this.cursors.down.isDown,
-            left: this.cursors.left.isDown,
-            right: this.cursors.right.isDown
-        };
-    }
-    update(time, delta) {
+    // getInput() {
+    //     return {
+    //         up: this.cursors.up.isDown,
+    //         down: this.cursors.down.isDown,
+    //         left: this.cursors.left.isDown,
+    //         right: this.cursors.right.isDown
+    //     };
+    // }
+    update(time: number, delta: number) {
         const speed = 150;
         let vx = 0;
         let vy = 0;
@@ -80,7 +85,7 @@ export default class MovementController {
         this.player.debug();
     }
 
-    checkValidMovement(vx, vy, delta) {
+    checkValidMovement(vx: number, vy: number, delta: number) {
         const currentTileCoords = Transformations.worldToIsoCoords(
             this.player.x + (vx * delta/1000), this.player.y + (vy * delta/1000),
              this.isoMap.tileWidth, this.isoMap.tileHeight,

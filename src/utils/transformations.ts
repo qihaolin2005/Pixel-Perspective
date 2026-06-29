@@ -1,5 +1,5 @@
 
-export function calculateOffset(mapWidth, mapHeight, tilePixel) {
+export function calculateOffset(mapWidth: integer, mapHeight: integer, tilePixel: number) {
     return Math.abs(mapWidth - mapHeight) * (tilePixel / 2);
 }
 /**
@@ -10,7 +10,8 @@ export function calculateOffset(mapWidth, mapHeight, tilePixel) {
  * @param {*} xOffset calculated xOffset
  * @returns an object {x, y} where x and y are World Pixels
  */
-export function isoCoordsToWorld({x, y, tileWidth, tileHeight}, xOffset) {
+export function isoCoordsToWorld({x, y, tileWidth, tileHeight}:
+     { x: number; y: number; tileWidth: number; tileHeight: number }, xOffset: number) {
     return {
         x: (x - y) * (tileWidth / 2) + xOffset,
         y: (x + y) * (tileHeight / 2),
@@ -26,7 +27,7 @@ export function isoCoordsToWorld({x, y, tileWidth, tileHeight}, xOffset) {
  * @param {*} tileHeight height of the tile
  * @returns x and y as isometric tiled coordinates
  */
-export function TiledPixelsToCoords (x, y, tileWidth, tileHeight) {
+export function TiledPixelsToCoords (x: number, y: number, tileWidth: number, tileHeight: number) {
     return {
         x : x / (tileWidth / 2),
         y : y / (tileHeight),
@@ -35,7 +36,7 @@ export function TiledPixelsToCoords (x, y, tileWidth, tileHeight) {
     };
 }
 
-export function worldToIsoCoords(x, y, tileWidth, tileHeight, xOffset) {
+export function worldToIsoCoords(x: number, y: number, tileWidth: number, tileHeight: number, xOffset: number) {
     const xMinusY = (x - xOffset) / (tileWidth / 2);
     const xplusY = y / (tileHeight / 2);
 
