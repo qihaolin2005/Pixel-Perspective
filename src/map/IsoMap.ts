@@ -46,6 +46,8 @@ export default class IsoMap {
             );
         });
 
+        this.drawCollisionBoxes();
+
     }
 
     getSpawnPoint() {
@@ -64,10 +66,52 @@ export default class IsoMap {
     }
 
     getFloorLayers() {
-    return this.map.layers.filter(layer =>
-        (layer.properties as any[])?.some(
-            (p: any) => p.name === "floor" && p.value === true
-        )
-    );
-}
+        return this.map.layers.filter(layer =>
+            (layer.properties as any[])?.some(
+                (p: any) => p.name === "floor" && p.value === true
+            )
+        );
+    }
+
+    drawCollisionBoxes() {
+        const g = this.scene.add.graphics();
+        g.lineStyle(2, 0xff0000);
+
+        this.map.layers.forEach(layerData => {
+            const layer = layerData.tilemapLayer;
+
+            if (!layer) return;
+
+            layer.forEachTile(tile => {
+                const group = tile.getCollisionGroup?.();
+                if (!group) return;
+
+                for (const obj of group.objects) {
+                    const worldX = layer.x + tile.pixelX + obj.x;
+                    const worldY = layer.y + tile.pixelY + obj.y;
+
+                    // RECTANGLE
+                    if (obj.rectangle) {
+                        g.strokeRect(worldX, worldY, obj.width, obj.height);
+                    }
+
+                    // POLYGON
+                    if (obj.polygon) {
+                        g.beginPath();
+
+                        const points = obj.polygon;
+
+                        g.moveTo(worldX + points[0].x, worldY + points[0].y);
+
+                        for (let i = 1; i < points.length; i++) {
+                            g.lineTo(worldX + points[i].x, worldY + points[i].y);
+                        }
+
+                        g.closePath();
+                        g.strokePath();
+                    }
+                }
+            }); 
+        });
+    }
 }
