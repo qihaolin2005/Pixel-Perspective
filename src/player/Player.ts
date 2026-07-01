@@ -12,7 +12,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.createAnimation();
         this.setOrigin(0.5, .8);
 
-        this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000).setDepth(99999);
+        this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 10, 10, 0xff0000).setDepth(99999);
         this.footprint = this.footprint = [
             { x: -this.displayWidth / 6, y: 32 },
             { x:  this.displayWidth / 6, y: 32 }
@@ -34,6 +34,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     addToScene() {
         this.scene.add.existing(this);
         this.scene.physics.add.existing(this);
+        this.setBodySize(12, 10);
+        this.body?.setOffset(18, 30);
         this.cursors = this.scene.input.keyboard!.createCursorKeys();
     }
 

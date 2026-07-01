@@ -6,7 +6,8 @@ export default class IsoMap {
     private scene: GameScene;
     private map: Phaser.Tilemaps.Tilemap;
     private tilesets: Phaser.Tilemaps.Tileset[];
-
+    public collisionLayers: Phaser.Tilemaps.TilemapLayer[];
+    public layers: Phaser.Tilemaps.TilemapLayer[];
     public xOffset: integer;
     public widthInPixels: integer;
     public heightInPixels: integer;
@@ -38,15 +39,35 @@ export default class IsoMap {
         });
         
         // -16s are for offsetting the layer, for some odd reason it needs to be offset idrk
-        this.map.layers.forEach(layerData => {this.map.createLayer(
+        this.layers = [];
+
+        this.map.layers.forEach(layerData => {
+            const layer = this.map.createLayer(
                 layerData.name,
                 this.tilesets,
                 this.xOffset - 16,
-                -16,
-            );
+                -16
+            )as Phaser.Tilemaps.TilemapLayer;
+
+            if (!layer) return;
+            //const staticGroup = this.scene.physics.add.staticGroup();
+            layer.forEachTile(tile => {
+                if (tile.properties?.collides) {
+                    console.log("collidable tile found");
+                    //staticGroup.addCollidesWith(tile)
+                }
+            });
+            
+
+
+            layer.setCollisionByProperty({ collides: true });
+
+            this.layers.push(layer);
         });
 
-        this.drawCollisionBoxes();
+        //this.collisionLayers = this.makeCollisionLayer();
+
+        //this.drawCollisionBoxes();
 
     }
 
@@ -71,6 +92,52 @@ export default class IsoMap {
                 (p: any) => p.name === "floor" && p.value === true
             )
         );
+    }
+
+    makeCollisionLayer() {
+        let collisionLayers: Phaser.Tilemaps.TilemapLayer[] = [];
+        this.map.layers.forEach(layerData => {
+            const layer = layerData.tilemapLayer;
+            if (!layer) return;
+            
+            let flag = false;
+            layer.forEachTile(tile => {
+                flag = flag || tile.getCollisionGroup?.() !== undefined
+            });
+            collisionLayers.push(layer);
+            
+        });
+        return collisionLayers;
+    }
+
+    createCollisionBodies(): Phaser.Physics.Arcade.StaticGroup {
+        const staticGroup = this.scene.physics.add.staticGroup();
+
+        this.layers.forEach(layer => {
+            layer.forEachTile(tile => {
+                if (!tile.properties?.collides) return;
+
+                const group = tile.getCollisionGroup?.() as any;
+                if (group?.objects?.length > 0) {
+                    for (const obj of group.objects) {
+                        if (!obj.width || !obj.height) continue;
+                        const cx = layer.x + tile.pixelX + obj.x + obj.width / 2;
+                        const cy = layer.y + tile.pixelY + obj.y + obj.height / 2;
+                        const zone = this.scene.add.zone(cx, cy, obj.width, obj.height);
+                        this.scene.physics.add.existing(zone, true);
+                        staticGroup.add(zone);
+                    }
+                } else {
+                    const cx = layer.x + tile.pixelX + tile.width / 2;
+                    const cy = layer.y + tile.pixelY + tile.height / 2;
+                    const zone = this.scene.add.zone(cx, cy, tile.width, tile.height);
+                    this.scene.physics.add.existing(zone, true);
+                    staticGroup.add(zone);
+                }
+            });
+        });
+
+        return staticGroup;
     }
 
     drawCollisionBoxes() {

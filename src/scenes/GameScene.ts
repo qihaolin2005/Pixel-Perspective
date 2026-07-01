@@ -29,7 +29,10 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
+        console.log(this.physics.getConfig());
 
+
+        this.physics.world.TILE_BIAS = 64;
         const free_tile_set = {tilesetName: 'Free ver', imageName: 'free_ver'};
         const objects = {tilesetName: 'Objects', imageName: 'objects'};
 
@@ -47,6 +50,19 @@ export default class GameScene extends Phaser.Scene {
 
         console.log(isomap.getFloorLayers());
         this.movementController = new MovementController(isomap, this.player);
+
+        
+        const collisionBodies = isomap.createCollisionBodies();
+        this.physics.add.collider(this.player, collisionBodies);
+
+        // isomap.layers.forEach(layer => {
+        //     layer.renderDebug(this.add.graphics(), {
+        //         tileColor: null,
+        //         collidingTileColor: new Phaser.Display.Color(255, 0, 0, 120),
+        //     });
+        // });
+
+        this.physics.world.createDebugGraphic();
            
         const corners = [
             { x: 0, y: 0 },
