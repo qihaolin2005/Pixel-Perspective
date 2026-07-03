@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
 import GameScene from '../scenes/GameScene';
 
-export default class Player extends Phaser.Physics.Arcade.Sprite {
+export default class Player extends Phaser.Physics.Matter.Sprite {
     private debugMarker: Phaser.GameObjects.Rectangle[];
     private currPositionMarker: Phaser.GameObjects.Rectangle;
     public cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     public footprint: {x: number, y: number}[];
 
     constructor (scene: GameScene, x: number, y: number, texture: string) {
-        super(scene, x, y, texture);
+        super(scene.matter.world, x, y, texture);
         this.createAnimation();
         this.setOrigin(0.5, .8);
 
@@ -33,9 +33,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     addToScene() {
         this.scene.add.existing(this);
-        this.scene.physics.add.existing(this);
-        this.setBodySize(12, 10);
-        this.body?.setOffset(18, 30);
+        this.setRectangle(12, 10, {
+            render: { sprite: { xOffset: 0, yOffset: 0.3 } }
+        });
+        this.setFixedRotation();
+        this.setFriction(0);
+        this.setFrictionAir(0);
         this.cursors = this.scene.input.keyboard!.createCursorKeys();
     }
 

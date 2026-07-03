@@ -1,6 +1,7 @@
 import Phaser, { Scene } from 'phaser';
 import * as Transformations from "../utils/transformations";
 import GameScene from '../scenes/GameScene';
+import * as Contour from "./contour";
 
 export default class IsoMap {
     private scene: GameScene;
@@ -9,10 +10,16 @@ export default class IsoMap {
     public collisionLayers: Phaser.Tilemaps.TilemapLayer[];
     public layers: Phaser.Tilemaps.TilemapLayer[];
     public xOffset: integer;
+    // Layers render at (xOffset - 16, -16) - see constructor. Anything projecting
+    // world positions for this map (floor collision, spawn point, etc.) must use
+    // the same offset or it'll drift from where tiles actually render.
+    public layerOffsetX: integer;
+    public layerOffsetY: integer;
     public widthInPixels: integer;
     public heightInPixels: integer;
     public tileWidth: integer;
     public tileHeight: integer;
+    public points: {x: number, y: number}[][];
 
 
 
@@ -23,6 +30,8 @@ export default class IsoMap {
             key: key
         });
         this.xOffset = Transformations.calculateOffset(this.map.width, this.map.height, this.map.tileWidth);
+        this.layerOffsetX = this.xOffset - 16;
+        this.layerOffsetY = -16;
         this.widthInPixels = this.map.widthInPixels;
         this.heightInPixels = this.map.heightInPixels;
         this.tileWidth = this.map.tileWidth;
@@ -38,15 +47,14 @@ export default class IsoMap {
             return tileset;
         });
         
-        // -16s are for offsetting the layer, for some odd reason it needs to be offset idrk
         this.layers = [];
 
         this.map.layers.forEach(layerData => {
             const layer = this.map.createLayer(
                 layerData.name,
                 this.tilesets,
-                this.xOffset - 16,
-                -16
+                this.layerOffsetX,
+                this.layerOffsetY
             )as Phaser.Tilemaps.TilemapLayer;
 
             if (!layer) return;
@@ -64,7 +72,7 @@ export default class IsoMap {
 
             this.layers.push(layer);
         });
-
+        this.points = [];
         //this.collisionLayers = this.makeCollisionLayer();
 
         //this.drawCollisionBoxes();
@@ -94,50 +102,92 @@ export default class IsoMap {
         );
     }
 
-    makeCollisionLayer() {
-        let collisionLayers: Phaser.Tilemaps.TilemapLayer[] = [];
-        this.map.layers.forEach(layerData => {
-            const layer = layerData.tilemapLayer;
-            if (!layer) return;
-            
-            let flag = false;
-            layer.forEachTile(tile => {
-                flag = flag || tile.getCollisionGroup?.() !== undefined
+    setFloorLayers() {
+        const floor = this.getFloorLayers();
+        const points = Contour.generateEdges(floor);
+        console.log(points);
+
+        points.forEach(pointArray => {
+            pointArray.forEach(point => {
+
+                let startPoint = Transformations.isoCoordsToWorld(
+                    {
+                        x: point.startX,
+                        y: point.startY,
+                        tileWidth: 32,
+                        tileHeight: 16
+                    },
+                    this.xOffset
+                );
+
+                let endPoint = Transformations.isoCoordsToWorld(
+                    {
+                        x: point.endX,
+                        y: point.endY,
+                        tileWidth: 32,
+                        tileHeight: 16
+                    },
+                    this.xOffset
+                );
+
+                // edge vector
+                const dx = endPoint.x - startPoint.x;
+                const dy = endPoint.y - startPoint.y;
+
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+
+                // midpoint
+                let centerX = (startPoint.x + endPoint.x) / 2;
+                let centerY = (startPoint.y + endPoint.y) / 2;
+
+                // perpendicular normal
+                const nx = -Math.sin(angle);
+                const ny = Math.cos(angle);
+
+                const offset = 2;
+
+                if (point.dir === "top") {
+                    centerX += nx * offset;
+                    centerY += ny * offset;
+                }
+
+                if (point.dir === "bottom") {
+                    centerX -= nx * offset;
+                    centerY -= ny * offset;
+                }
+
+                if (point.dir === "left") {
+                    centerX += nx * offset;
+                    centerY += ny * offset;
+                }
+
+                if (point.dir === "right") {
+                    centerX -= nx * offset;
+                    centerY -= ny * offset;
+                }
+
+                centerY -= this.tileHeight;
+
+                this.scene.matter.add.rectangle(
+                    centerX,
+                    centerY,
+                    length,
+                    2,
+                    {
+                        isStatic: true,
+                        angle
+                    }
+                );
             });
-            collisionLayers.push(layer);
-            
         });
-        return collisionLayers;
     }
 
-    createCollisionBodies(): Phaser.Physics.Arcade.StaticGroup {
-        const staticGroup = this.scene.physics.add.staticGroup();
 
+    createCollisionBodies() {
         this.layers.forEach(layer => {
-            layer.forEachTile(tile => {
-                if (!tile.properties?.collides) return;
-
-                const group = tile.getCollisionGroup?.() as any;
-                if (group?.objects?.length > 0) {
-                    for (const obj of group.objects) {
-                        if (!obj.width || !obj.height) continue;
-                        const cx = layer.x + tile.pixelX + obj.x + obj.width / 2;
-                        const cy = layer.y + tile.pixelY + obj.y + obj.height / 2;
-                        const zone = this.scene.add.zone(cx, cy, obj.width, obj.height);
-                        this.scene.physics.add.existing(zone, true);
-                        staticGroup.add(zone);
-                    }
-                } else {
-                    const cx = layer.x + tile.pixelX + tile.width / 2;
-                    const cy = layer.y + tile.pixelY + tile.height / 2;
-                    const zone = this.scene.add.zone(cx, cy, tile.width, tile.height);
-                    this.scene.physics.add.existing(zone, true);
-                    staticGroup.add(zone);
-                }
-            });
+            this.scene.matter.world.convertTilemapLayer(layer);
         });
-
-        return staticGroup;
     }
 
     drawCollisionBoxes() {

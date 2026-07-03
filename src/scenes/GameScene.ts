@@ -29,10 +29,6 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
-        console.log(this.physics.getConfig());
-
-
-        this.physics.world.TILE_BIAS = 64;
         const free_tile_set = {tilesetName: 'Free ver', imageName: 'free_ver'};
         const objects = {tilesetName: 'Objects', imageName: 'objects'};
 
@@ -52,8 +48,7 @@ export default class GameScene extends Phaser.Scene {
         this.movementController = new MovementController(isomap, this.player);
 
         
-        const collisionBodies = isomap.createCollisionBodies();
-        this.physics.add.collider(this.player, collisionBodies);
+        isomap.createCollisionBodies();
 
         // isomap.layers.forEach(layer => {
         //     layer.renderDebug(this.add.graphics(), {
@@ -62,8 +57,6 @@ export default class GameScene extends Phaser.Scene {
         //     });
         // });
 
-        this.physics.world.createDebugGraphic();
-           
         const corners = [
             { x: 0, y: 0 },
             { x: 64, y: 0 },
@@ -83,10 +76,20 @@ export default class GameScene extends Phaser.Scene {
             this.add.circle(p.x, p.y, 5, 0xff0000);
             this.add.text(p.x + 5, p.y, `${c.x},${c.y}`);
         }
+
+        isomap.setFloorLayers();
+        //isomap.drawFloorDebug();
+
+    //     this.matter.add.gameObject(
+    //     this.add.polygon(0, 0, points),
+    //     {
+    //         isStatic: true
+    //     }
+    // );
   
-        let test = Transformations.isoCoordsToWorld({x: 12, y: 15, tileWidth: 32, tileHeight: 16}, 512);
-        console.log(test.x, test.y);
-        this.add.rectangle(test.x, test.y, 3, 3, 0xff0000).setDepth(9999);
+        // let test = Transformations.isoCoordsToWorld({x: 12, y: 15, tileWidth: 32, tileHeight: 16}, 512);
+        // console.log(test.x, test.y);
+        // this.add.rectangle(test.x, test.y, 3, 3, 0xff0000).setDepth(9999);
 
 
     }
