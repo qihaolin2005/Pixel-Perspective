@@ -1,13 +1,13 @@
-import Phaser, { Scene } from 'phaser';
+import Phaser, { GameObjects, Scene } from 'phaser';
 import * as Transformations from "../utils/transformations";
 import GameScene from '../scenes/GameScene';
 import * as Contour from "./contour";
+import RevealManager from '../shaders/RevealManager';
 
 export default class IsoMap {
     private scene: GameScene;
     private map: Phaser.Tilemaps.Tilemap;
     private tilesets: Phaser.Tilemaps.Tileset[];
-    public collisionLayers: Phaser.Tilemaps.TilemapLayer[];
     public layers: Phaser.Tilemaps.TilemapLayer[];
     public xOffset: integer;
     // Layers render at (xOffset - 16, -16) - see constructor. Anything projecting
@@ -20,6 +20,7 @@ export default class IsoMap {
     public tileWidth: integer;
     public tileHeight: integer;
     public points: {x: number, y: number}[][];
+    private sprites: Phaser.GameObjects.Image[]
 
 
 
@@ -58,11 +59,9 @@ export default class IsoMap {
             )as Phaser.Tilemaps.TilemapLayer;
 
             if (!layer) return;
-            //const staticGroup = this.scene.physics.add.staticGroup();
             layer.forEachTile(tile => {
                 if (tile.properties?.collides) {
                     console.log("collidable tile found");
-                    //staticGroup.addCollidesWith(tile)
                 }
             });
             
@@ -73,10 +72,8 @@ export default class IsoMap {
             this.layers.push(layer);
         });
         this.points = [];
-        //this.collisionLayers = this.makeCollisionLayer();
-
-        //this.drawCollisionBoxes();
-
+        this.sprites = [];
+        this.addObjects();
     }
 
     getSpawnPoint() {
@@ -94,12 +91,101 @@ export default class IsoMap {
 
     }
 
+    addObjects(){
+            this.map.getObjectLayerNames().forEach(layerName => {
+                // const objects = this.map.createFromObjects(layerName, {}, true);
+                // objects.forEach(obj => {
+                //     obj.body?.position
+                //     const isoCoords = Transformations.TiledPixelsToCoords(obj.x, obj.y, this.tileWidth, this.tileHeight);
+                //     const worldXY = Transformations.isoCoordsToWorld(isoCoords, this.xOffset);
+                // });
+
+                const layer = this.map.getObjectLayer(layerName);
+                const debug = this.scene.add.graphics({ lineStyle: { width: 1, color: 0xff0000 } });
+                debug.setDepth(999999);
+
+                layer!.objects.forEach(obj => {
+                    if (obj.x == null || obj.y == null || obj.gid == null || obj.height == null) return;
+
+                    const gid = obj.gid;
+                    const tileset = this.map.tilesets.find(ts =>
+                        gid >= ts.firstgid && gid < ts.firstgid + ts.total
+                    )!;
+                    const frame = gid - tileset.firstgid;
+
+                    const isoCoords = Transformations.TiledPixelsToCoords(obj.x, obj.y, this.tileWidth, this.tileHeight);
+                    const worldXY = Transformations.isoCoordsToWorld(isoCoords, this.xOffset);
+
+                    const sprite = this.scene.add.image(
+                        worldXY.x,
+                        worldXY.y - (obj.height / 2),
+                        tileset.image!.key,
+                        frame
+                    );
+                    sprite.setDepth(worldXY.y);
+                    this.sprites.push(sprite);
+
+                    // --- draw the tile's collision shapes over the sprite ---
+                    // NOTE: pass the GLOBAL gid here, not `frame`. getTileCollisionGroup
+                    // subtracts firstgid internally (same value the docs pass as tile.index).
+                    const group = tileset.getTileCollisionGroup(gid);
+                    if (!group || group.objects.length === 0) return;
+
+                    // top-left of the rendered tile image in world space
+                    const tlx = sprite.x - sprite.originX * sprite.displayWidth;
+                    const tly = sprite.y - sprite.originY * sprite.displayHeight;
+
+                    for (const shape of group.objects) {
+                        // this shape's vertices, in world space
+                        let verts: { x: number; y: number }[];
+
+                        if (shape.polygon) {
+                            verts = shape.polygon.map(p => ({
+                                x: tlx + shape.x! + p.x,
+                                y: tly + shape.y! + p.y,
+                            }));
+                        } else if (shape.rectangle) {
+                            const x0 = tlx + (shape.x ?? 0);
+                            const y0 = tly + (shape.y ?? 0);
+                            const w = shape.width!, h = shape.height!;
+                            verts = [
+                                { x: x0,     y: y0     },
+                                { x: x0 + w, y: y0     },
+                                { x: x0 + w, y: y0 + h },
+                                { x: x0,     y: y0 + h },
+                            ];
+                        } else {
+                            continue; // ellipse / point — handle separately if you use them
+                        }
+
+                        // fromVertices centers the body's centroid on (x, y), so pass the
+                        // shape's own world-space centroid to keep the collider over the art.
+                        const cx = verts.reduce((s, v) => s + v.x, 0) / verts.length;
+                        const cy = verts.reduce((s, v) => s + v.y, 0) / verts.length;
+
+                        this.scene.matter.add.fromVertices(cx, cy, verts, { isStatic: true });
+                    }
+                });
+            
+        });
+    }
+
     getFloorLayers() {
         return this.map.layers.filter(layer =>
             (layer.properties as any[])?.some(
                 (p: any) => p.name === "floor" && p.value === true
             )
         );
+    }
+
+    applyObjectLayerWithReveal(reveal: RevealManager) {
+            const isOccluder = true;
+
+            this.sprites.forEach(sprite => {
+                if (isOccluder) {
+                    reveal.register(sprite);
+                }  
+            });
     }
 
     setFloorLayers() {
@@ -130,18 +216,15 @@ export default class IsoMap {
                     this.xOffset
                 );
 
-                // edge vector
                 const dx = endPoint.x - startPoint.x;
                 const dy = endPoint.y - startPoint.y;
 
                 const length = Math.sqrt(dx * dx + dy * dy);
                 const angle = Math.atan2(dy, dx);
 
-                // midpoint
                 let centerX = (startPoint.x + endPoint.x) / 2;
                 let centerY = (startPoint.y + endPoint.y) / 2;
 
-                // perpendicular normal
                 const nx = -Math.sin(angle);
                 const ny = Math.cos(angle);
 
@@ -187,48 +270,6 @@ export default class IsoMap {
     createCollisionBodies() {
         this.layers.forEach(layer => {
             this.scene.matter.world.convertTilemapLayer(layer);
-        });
-    }
-
-    drawCollisionBoxes() {
-        const g = this.scene.add.graphics();
-        g.lineStyle(2, 0xff0000);
-
-        this.map.layers.forEach(layerData => {
-            const layer = layerData.tilemapLayer;
-
-            if (!layer) return;
-
-            layer.forEachTile(tile => {
-                const group = tile.getCollisionGroup?.();
-                if (!group) return;
-
-                for (const obj of group.objects) {
-                    const worldX = layer.x + tile.pixelX + obj.x;
-                    const worldY = layer.y + tile.pixelY + obj.y;
-
-                    // RECTANGLE
-                    if (obj.rectangle) {
-                        g.strokeRect(worldX, worldY, obj.width, obj.height);
-                    }
-
-                    // POLYGON
-                    if (obj.polygon) {
-                        g.beginPath();
-
-                        const points = obj.polygon;
-
-                        g.moveTo(worldX + points[0].x, worldY + points[0].y);
-
-                        for (let i = 1; i < points.length; i++) {
-                            g.lineTo(worldX + points[i].x, worldY + points[i].y);
-                        }
-
-                        g.closePath();
-                        g.strokePath();
-                    }
-                }
-            }); 
         });
     }
 }

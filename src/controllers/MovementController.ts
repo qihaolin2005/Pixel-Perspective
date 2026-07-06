@@ -69,6 +69,7 @@ export default class MovementController {
         }
 
         this.player.debug();
+        this.player.update();
     }
 
 

@@ -3,9 +3,11 @@ import * as Transformations from "../utils/transformations";
 import Player from '../player/Player';
 import IsoMap from '../map/IsoMap';
 import MovementController from '../controllers/MovementController.js';
+import RevealManager from '../shaders/RevealManager';
 
 
 export default class GameScene extends Phaser.Scene {
+    private reveal!: RevealManager;
     private player!: Player;
     private movementController!: MovementController;
     
@@ -16,7 +18,11 @@ export default class GameScene extends Phaser.Scene {
     preload() {
         this.load.tilemapTiledJSON('map', 'assets/maps/farm.tmj');
         this.load.image('free_ver', 'assets/images/Free_ver.png');
-        this.load.image('objects', 'assets/images/Objects.png');
+        this.load.spritesheet('objects', 'assets/images/Objects.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        
         this.load.spritesheet('player_idle', 'assets/sprites/MPlayer 1 idle.png', {
             frameWidth: 48,
             frameHeight: 48
@@ -25,14 +31,19 @@ export default class GameScene extends Phaser.Scene {
             frameWidth: 48,
             frameHeight: 48
         });
+        this.load.spritesheet('tree_9x9', 'assets/images/tree_9x9.png', {
+                    frameWidth: 288,
+                    frameHeight: 144
+        });        
         
     }
 
     create() {
         const free_tile_set = {tilesetName: 'Free ver', imageName: 'free_ver'};
         const objects = {tilesetName: 'Objects', imageName: 'objects'};
+        const tree_9x9 = {tilesetName: 'tree_9x9', imageName: 'tree_9x9'};
 
-        const tileset = [free_tile_set, objects];
+        const tileset = [free_tile_set, objects, tree_9x9];
 
         const isomap = new IsoMap(this, 'map', tileset);
         const spawnWorldPixels = isomap.getSpawnPoint();
@@ -48,14 +59,11 @@ export default class GameScene extends Phaser.Scene {
         this.movementController = new MovementController(isomap, this.player);
 
         
-        isomap.createCollisionBodies();
+        //isomap.createCollisionBodies();
 
-        // isomap.layers.forEach(layer => {
-        //     layer.renderDebug(this.add.graphics(), {
-        //         tileColor: null,
-        //         collidingTileColor: new Phaser.Display.Color(255, 0, 0, 120),
-        //     });
-        // });
+        this.reveal = new RevealManager(this);
+        this.reveal.setPlayer(this.player);
+        isomap.applyObjectLayerWithReveal(this.reveal);
 
         const corners = [
             { x: 0, y: 0 },
@@ -77,25 +85,13 @@ export default class GameScene extends Phaser.Scene {
             this.add.text(p.x + 5, p.y, `${c.x},${c.y}`);
         }
 
-        isomap.setFloorLayers();
-        //isomap.drawFloorDebug();
-
-    //     this.matter.add.gameObject(
-    //     this.add.polygon(0, 0, points),
-    //     {
-    //         isStatic: true
-    //     }
-    // );
-  
-        // let test = Transformations.isoCoordsToWorld({x: 12, y: 15, tileWidth: 32, tileHeight: 16}, 512);
-        // console.log(test.x, test.y);
-        // this.add.rectangle(test.x, test.y, 3, 3, 0xff0000).setDepth(9999);
-
+        //isomap.setFloorLayers();
 
     }
 
     update(time: number, delta: number) {
         this.movementController.update(time, delta);
+        this.reveal.update();
 
     }
     

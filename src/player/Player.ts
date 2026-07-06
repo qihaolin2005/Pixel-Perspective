@@ -2,33 +2,15 @@ import Phaser from 'phaser';
 import GameScene from '../scenes/GameScene';
 
 export default class Player extends Phaser.Physics.Matter.Sprite {
-    private debugMarker: Phaser.GameObjects.Rectangle[];
     private currPositionMarker: Phaser.GameObjects.Rectangle;
     public cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-    public footprint: {x: number, y: number}[];
 
     constructor (scene: GameScene, x: number, y: number, texture: string) {
         super(scene.matter.world, x, y, texture);
         this.createAnimation();
         this.setOrigin(0.5, .8);
 
-        this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 10, 10, 0xff0000).setDepth(99999);
-        this.footprint = this.footprint = [
-            { x: -this.displayWidth / 6, y: 32 },
-            { x:  this.displayWidth / 6, y: 32 }
-        ];
-
-        this.debugMarker = this.footprint.map(offset => {
-            console.log(offset.x);
-            return this.scene.add.rectangle(
-                this.x + offset.x, 
-                this.y + offset.y, 
-                1, 
-                1, 
-                0xff0000
-            ).setDepth(99999);
-        });
-        
+        this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000).setDepth(99999);      
     }
 
     addToScene() {
@@ -43,10 +25,6 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
     }
 
     debug(){
-        for (let i = 0; i < this.debugMarker.length; i++) {
-            this.debugMarker[i]!.x = this.x + this.footprint[i]!.x;
-            this.debugMarker[i]!.y = this.y + this.footprint[i]!.y;
-        }
         this.currPositionMarker.x = this.x;
         this.currPositionMarker.y = this.y;
         
@@ -60,6 +38,7 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
 
     update() {
         this.debug;
+        this.setDepth(this.y);
     }
 
     createAnimation() {
