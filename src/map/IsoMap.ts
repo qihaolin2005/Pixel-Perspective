@@ -4,6 +4,28 @@ import GameScene from '../scenes/GameScene';
 import * as Contour from "./contour";
 import RevealManager from '../shaders/RevealManager';
 
+// Matches Matter.js's Vertices.centre: the area-weighted polygon centroid, not the
+// simple average of vertices. Bodies.fromVertices repositions bodies to whatever
+// centroid you tell it, using this same formula internally - passing a plain vertex
+// mean here would make asymmetric polygons drift from where their vertices actually are.
+function polygonCentroid(verts: { x: number; y: number }[]): { x: number; y: number } {
+    let area = 0, cx = 0, cy = 0;
+    for (let i = 0; i < verts.length; i++) {
+        const a = verts[i]!;
+        const b = verts[(i + 1) % verts.length]!;
+        const cross = a.x * b.y - b.x * a.y;
+        area += cross;
+        cx += (a.x + b.x) * cross;
+        cy += (a.y + b.y) * cross;
+    }
+    area *= 0.5;
+    if (Math.abs(area) < 1e-9) {
+        const mean = verts.reduce((s, v) => ({ x: s.x + v.x, y: s.y + v.y }), { x: 0, y: 0 });
+        return { x: mean.x / verts.length, y: mean.y / verts.length };
+    }
+    return { x: cx / (6 * area), y: cy / (6 * area) };
+}
+
 export default class IsoMap {
     private scene: GameScene;
     private map: Phaser.Tilemaps.Tilemap;
@@ -76,12 +98,12 @@ export default class IsoMap {
         this.addObjects();
     }
 
-    getSpawnPoint() {
+    getSpawnPoint(spawnName: String) {
         const spawnLayer = this.map.getObjectLayer('SpawnPoint');
         if (!spawnLayer) {
             throw new Error('Failed to get SpawnLayer');
         }
-        const spawn = spawnLayer.objects.find(obj => obj.name === 'SpawnPoint');
+        const spawn = spawnLayer.objects.find(obj => obj.name === spawnName);
         if (!spawn) {
             throw new Error('Failed to get SpawnPoint');
         }
@@ -93,12 +115,6 @@ export default class IsoMap {
 
     addObjects(){
             this.map.getObjectLayerNames().forEach(layerName => {
-                // const objects = this.map.createFromObjects(layerName, {}, true);
-                // objects.forEach(obj => {
-                //     obj.body?.position
-                //     const isoCoords = Transformations.TiledPixelsToCoords(obj.x, obj.y, this.tileWidth, this.tileHeight);
-                //     const worldXY = Transformations.isoCoordsToWorld(isoCoords, this.xOffset);
-                // });
 
                 const layer = this.map.getObjectLayer(layerName);
                 const debug = this.scene.add.graphics({ lineStyle: { width: 1, color: 0xff0000 } });
@@ -131,7 +147,6 @@ export default class IsoMap {
                     const group = tileset.getTileCollisionGroup(gid);
                     if (!group || group.objects.length === 0) return;
 
-                    // top-left of the rendered tile image in world space
                     const tlx = sprite.x - sprite.originX * sprite.displayWidth;
                     const tly = sprite.y - sprite.originY * sprite.displayHeight;
 
@@ -158,12 +173,27 @@ export default class IsoMap {
                             continue; // ellipse / point — handle separately if you use them
                         }
 
-                        // fromVertices centers the body's centroid on (x, y), so pass the
-                        // shape's own world-space centroid to keep the collider over the art.
-                        const cx = verts.reduce((s, v) => s + v.x, 0) / verts.length;
-                        const cy = verts.reduce((s, v) => s + v.y, 0) / verts.length;
+                        // fromVertices centers the body's centroid on (x, y). Matter computes that
+                        // centroid internally using the polygon area formula (Vertices.centre), not
+                        // a simple vertex average - passing the wrong kind of centroid here makes
+                        // Matter shift the whole shape by the difference, which only shows up for
+                        // asymmetric polygons (rectangles' mean == area centroid, so they look fine).
+                        const { x: cx, y: cy } = polygonCentroid(verts);
 
-                        this.scene.matter.add.fromVertices(cx, cy, verts, { isStatic: true });
+                        const body = this.scene.matter.add.fromVertices(cx, cy, verts, { isStatic: true });
+
+                        // Concave shapes get decomposed into convex parts (via poly-decomp), and for
+                        // static bodies Matter averages each part's centroid *unweighted* by area
+                        // (Body._totalProperties treats static parts as mass 1 regardless of size),
+                        // which drifts from the true polygon centroid whenever the parts are unequal
+                        // in size - shifting the whole shape off the art. Snapping the body's actual
+                        // bounds back onto the vertices we intended is a pure translation, so it
+                        // realigns the shape regardless of how Matter centered it internally.
+                        const dx = Math.min(...verts.map(v => v.x)) - body.bounds.min.x;
+                        const dy = Math.min(...verts.map(v => v.y)) - body.bounds.min.y;
+                        if (dx !== 0 || dy !== 0) {
+                            this.scene.matter.body.translate(body, { x: dx, y: dy });
+                        }
                     }
                 });
             
@@ -250,7 +280,25 @@ export default class IsoMap {
                     centerY -= ny * offset;
                 }
 
-                centerY -= this.tileHeight;
+
+                let sign = 1;
+
+                switch (point.dir) {
+                    case "top":
+                    case "left":
+                        sign = -1;
+                        break;
+
+                    case "bottom":
+                    case "right":
+                        sign = 1;
+                        break;
+                }
+
+                centerX += nx * offset * sign;
+                centerY += ny * offset * sign;
+
+                //centerY -= this.tileHeight;
 
                 this.scene.matter.add.rectangle(
                     centerX,

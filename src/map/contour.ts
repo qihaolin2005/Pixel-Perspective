@@ -35,7 +35,8 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
             let rectTop = null;
             let rectBot = null;
             for (let j = 0; j < data[i]!.length; j++) {
-                const currTile = data[i]![j];
+                const currTile = data[i]![j]!;
+                const offsets = getOffset(currTile);
                 if (currTile!.index == -1) {
                     rectTop = flushEdge(rectTop, pointArr);
                     rectBot = flushEdge(rectBot, pointArr);
@@ -43,20 +44,28 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
                 else {
                     if (i == 0 || data[i - 1]![j]?.index == -1) {
                         if (!rectTop) {
-                            rectTop = {startX : j, startY: i, endX: j + 1, endY: i, dir: 'top'};
+                            //rectTop = {startX : j, startY: i, endX: j + 1, endY: i, dir: 'top'};
+                            rectTop = createRect(j, i, j + 1, i, 'top', offsets);
                         }
                         else {
-                            rectTop.endX = j + 1;
+                            rectTop.endX = j + 1 + offsets.xOffset;
                         }
+                    }
+                    else {
+                        rectTop = flushEdge(rectTop, pointArr);
                     }
 
                     if (i == data.length - 1 || data[i + 1]![j]?.index == -1) {
                         if (!rectBot) {
-                            rectBot = {startX : j, startY: i + 1, endX: j + 1, endY: i + 1, dir: 'bot'};
+                            rectBot = createRect(j, i + 1, j + 1, i + 1, 'bot', offsets);
+                            //rectBot = {startX : j, startY: i + 1, endX: j + 1, endY: i + 1, dir: 'bottom'};
                         }
                         else {
-                            rectBot.endX = j + 1;
+                            rectBot.endX = j + 1 + offsets.xOffset;
                         }
+                    }
+                    else {
+                        rectBot = flushEdge(rectBot, pointArr);
                     }
                 }
                 
@@ -69,7 +78,9 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
             let rectLeft = null;
             let rectRight = null;
             for (let i = 0; i < data.length; i++) {
-                const currTile = data[i]![j];
+                const currTile = data[i]![j]!;
+                const offsets = getOffset(currTile);
+                
                 if (currTile!.index == -1) {
                     rectLeft = flushEdge(rectLeft, pointArr);
                     rectRight = flushEdge(rectRight, pointArr);
@@ -77,32 +88,40 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
                 else {
                     if (j == 0 || data[i]![j - 1]?.index == -1) {
                         if (!rectLeft) {
-                            rectLeft = {
-                                startX: j,
-                                startY: i,
-                                endX: j,
-                                endY: i + 1,
-                                dir: 'left'
-                            };
+                            rectLeft = createRect(j, i, j, i + 1, 'left', offsets);
+                            // rectLeft = {
+                            //     startX: j,
+                            //     startY: i,
+                            //     endX: j,
+                            //     endY: i + 1,
+                            //     dir: 'left'
+                            // };
                         }
                         else {
-                            rectLeft.endY = i + 1;
+                            rectLeft.endY = i + 1 + offsets.yOffset;
                         }
+                    }
+                    else {
+                        rectLeft = flushEdge(rectLeft, pointArr);
                     }
 
                     if (j == data[0]!.length - 1 || data[i]![j + 1]?.index == -1) {
                         if (!rectRight) {
-                            rectRight = {
-                                startX: j + 1,
-                                startY: i,
-                                endX: j + 1,
-                                endY: i + 1,
-                                dir: 'right'
-                            };
+                            rectRight = createRect(j + 1, i, j + 1, i + 1, 'right', offsets);
+                            // rectRight = {
+                            //     startX: j + 1,
+                            //     startY: i,
+                            //     endX: j + 1,
+                            //     endY: i + 1,
+                            //     dir: 'right'
+                            // };
                         }
                         else {
-                            rectRight.endY = i + 1;
+                            rectRight.endY = i + 1 + offsets.yOffset;
                         }
+                    }
+                    else {
+                        rectRight = flushEdge(rectRight, pointArr);
                     }
                 }
             }
@@ -128,4 +147,28 @@ function flushEdge( edge: Edge | null, output: Edge[]): Edge | null {
         output.push(edge);
     }
     return null;
+}
+
+function getOffset(tile: Phaser.Tilemaps.Tile) {
+    let xOffset = 0;
+    let yOffset = 0;
+    if (tile.properties.xOffset) {
+        xOffset = tile.properties.xOffset;
+    }
+    if (tile.properties.yOffset) {
+        yOffset = tile.properties.yOffset;
+    }
+
+    return {xOffset: xOffset, yOffset: yOffset};
+}
+
+function createRect(startX: number, startY: number, endX: number, endY: number, dir: string,
+    offset: {xOffset: number, yOffset: number}) {
+    return {
+        startX: startX + offset.xOffset,
+        startY: startY + offset.yOffset,
+        endX: endX + offset.xOffset,
+        endY: endY + offset.yOffset,
+        dir: dir,
+    }
 }
