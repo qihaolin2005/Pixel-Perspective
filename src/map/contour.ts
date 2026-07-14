@@ -37,12 +37,12 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
             for (let j = 0; j < data[i]!.length; j++) {
                 const currTile = data[i]![j]!;
                 const offsets = getOffset(currTile);
-                if (currTile!.index == -1) {
+                if (!checkValidFloorTile(currTile)) {
                     rectTop = flushEdge(rectTop, pointArr);
                     rectBot = flushEdge(rectBot, pointArr);
                 }
                 else {
-                    if (i == 0 || data[i - 1]![j]?.index == -1) {
+                    if (i == 0 || !checkValidFloorTile(data[i - 1]![j]!)) {
                         if (!rectTop) {
                             //rectTop = {startX : j, startY: i, endX: j + 1, endY: i, dir: 'top'};
                             rectTop = createRect(j, i, j + 1, i, 'top', offsets);
@@ -55,7 +55,7 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
                         rectTop = flushEdge(rectTop, pointArr);
                     }
 
-                    if (i == data.length - 1 || data[i + 1]![j]?.index == -1) {
+                    if (i == data.length - 1 || !checkValidFloorTile(data[i + 1]![j]!)) {
                         if (!rectBot) {
                             rectBot = createRect(j, i + 1, j + 1, i + 1, 'bot', offsets);
                             //rectBot = {startX : j, startY: i + 1, endX: j + 1, endY: i + 1, dir: 'bottom'};
@@ -81,12 +81,12 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
                 const currTile = data[i]![j]!;
                 const offsets = getOffset(currTile);
                 
-                if (currTile!.index == -1) {
+                if (!checkValidFloorTile(currTile)) {
                     rectLeft = flushEdge(rectLeft, pointArr);
                     rectRight = flushEdge(rectRight, pointArr);
                 }
                 else {
-                    if (j == 0 || data[i]![j - 1]?.index == -1) {
+                    if (j == 0 || !checkValidFloorTile(data[i]![j - 1]!)) {
                         if (!rectLeft) {
                             rectLeft = createRect(j, i, j, i + 1, 'left', offsets);
                             // rectLeft = {
@@ -105,7 +105,7 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
                         rectLeft = flushEdge(rectLeft, pointArr);
                     }
 
-                    if (j == data[0]!.length - 1 || data[i]![j + 1]?.index == -1) {
+                    if (j == data[0]!.length - 1 || !checkValidFloorTile(data[i]![j + 1]!)) {
                         if (!rectRight) {
                             rectRight = createRect(j + 1, i, j + 1, i + 1, 'right', offsets);
                             // rectRight = {
@@ -171,4 +171,8 @@ function createRect(startX: number, startY: number, endX: number, endY: number, 
         endY: endY + offset.yOffset,
         dir: dir,
     }
+}
+
+function checkValidFloorTile(tile: Phaser.Tilemaps.Tile) {
+    return  Boolean(tile.properties.floor);
 }

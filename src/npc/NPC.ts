@@ -111,10 +111,4 @@ export default class NPC extends Phaser.Physics.Matter.Sprite {
         repeat: -1
     });
     }
-
-    
-    
-
-
-
 }
