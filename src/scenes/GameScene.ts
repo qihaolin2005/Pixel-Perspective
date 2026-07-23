@@ -99,7 +99,7 @@ export default class GameScene extends Phaser.Scene {
             this.cameras.main.displayWidth,
             this.cameras.main.displayHeight
         );
-        this.cameras.main.setZoom(2);
+        this.cameras.main.setZoom(1);
 
         this.enterKey = this.input.keyboard.addKey(
             Phaser.Input.Keyboard.KeyCodes.ENTER

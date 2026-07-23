@@ -220,7 +220,15 @@ export default class IsoMap {
 
     setFloorLayers() {
         const floor = this.getFloorLayers();
-        const points = Contour.generateEdges(floor);
+
+        // const test = [];
+        // const mergeFloor = Contour.CreateTransitionLayer(floor[1]!, floor[0]!);
+        // test.push(mergeFloor);
+        let floorPoints = Contour.generateEdges(floor);
+        let combine = Contour.mergeEdges(floorPoints[0]!, floorPoints[1]!);
+        const points = [];
+        points.push(combine);
+
         console.log(points);
 
         points.forEach(pointArray => {

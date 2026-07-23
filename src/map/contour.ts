@@ -26,6 +26,55 @@ export function generatePoints(layers: Phaser.Tilemaps.LayerData[]) {
     });
 }
 
+/**
+ * DOES NOT WORK WITH AN OFFSET OR LAYERS WITH DIFFERENT SIZE
+ * 
+ * @param layerTop 
+ * @param layerBot 
+ */
+export function CreateTransitionLayer(layerTop: Phaser.Tilemaps.LayerData, layerBot: Phaser.Tilemaps.LayerData) {
+    const topData = layerTop.data as Phaser.Tilemaps.Tile[][];
+    const botData = layerBot.data as Phaser.Tilemaps.Tile[][];
+
+   const mergeData: Phaser.Tilemaps.Tile[][] =
+    Array.from({ length: topData.length }, (_, i) =>
+        Array.from({ length: topData[i]!.length }, (_, j) =>
+            topData[i]![j]!
+        )
+    );
+    
+    for (let i = 0; i < topData.length; i++) {
+        for (let j = 0; j < topData[i]!.length; j++) {
+            const topTile = topData[i]?.[j];
+            const botTile = botData[i]?.[j];
+            if (!topTile) {
+                throw new Error(`Missing top tile at (${i}, ${j})`);
+            }
+            if (!botTile) {
+                throw new Error(`Missing botom tile at (${i}, ${j})`);
+            }
+
+            if (topTile.index === -1) {
+                mergeData[i]![j] = botTile;
+            }
+            else {
+                mergeData[i]![j] = topTile;
+            }
+        }
+    }
+
+    const mergeLayerData: Phaser.Tilemaps.LayerData = {
+        ...layerTop,
+        name: layerTop.name + ' ' + layerBot.name,
+        data: mergeData
+    };
+
+    return mergeLayerData;
+
+
+
+}
+
 export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
     const points: Edge[][] = [];
     layers.forEach(layer => {
@@ -89,13 +138,6 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
                     if (j == 0 || !checkValidFloorTile(data[i]![j - 1]!)) {
                         if (!rectLeft) {
                             rectLeft = createRect(j, i, j, i + 1, 'left', offsets);
-                            // rectLeft = {
-                            //     startX: j,
-                            //     startY: i,
-                            //     endX: j,
-                            //     endY: i + 1,
-                            //     dir: 'left'
-                            // };
                         }
                         else {
                             rectLeft.endY = i + 1 + offsets.yOffset;
@@ -108,13 +150,6 @@ export function generateEdges(layers: Phaser.Tilemaps.LayerData[]) {
                     if (j == data[0]!.length - 1 || !checkValidFloorTile(data[i]![j + 1]!)) {
                         if (!rectRight) {
                             rectRight = createRect(j + 1, i, j + 1, i + 1, 'right', offsets);
-                            // rectRight = {
-                            //     startX: j + 1,
-                            //     startY: i,
-                            //     endX: j + 1,
-                            //     endY: i + 1,
-                            //     dir: 'right'
-                            // };
                         }
                         else {
                             rectRight.endY = i + 1 + offsets.yOffset;
@@ -141,6 +176,107 @@ type Edge = {
     endY: number;
     dir: string;
 };
+
+type Interval = { start: number; end: number };
+
+// Removes each `remove` interval from `base`, splitting a base interval into
+// two pieces if the removal falls in its middle, trimming it if at an end.
+function subtractIntervals(base: Interval[], remove: Interval[]): Interval[] {
+    let result = base.slice();
+    remove.forEach(r => {
+        const next: Interval[] = [];
+        result.forEach(b => {
+            if (r.end <= b.start || r.start >= b.end) {
+                next.push(b);
+                return;
+            }
+            if (b.start < r.start) next.push({ start: b.start, end: r.start });
+            if (b.end > r.end) next.push({ start: r.end, end: b.end });
+        });
+        result = next;
+    });
+    return result;
+}
+
+// Reconstructs, for a single row of a layer, the x-intervals that are floor -
+// by scanning that layer's own left/right edges. A 'left' edge marks where a
+// floor run starts (scanning left to right) and 'right' marks where it ends,
+// so sorted by x they alternate start/end pairs.
+function rowFloorIntervals(edges: Edge[], row: number): Interval[] {
+    const xs = edges
+        .filter(e => (e.dir === 'left' || e.dir === 'right') && e.startY <= row && e.endY > row)
+        .map(e => e.startX)
+        .sort((a, b) => a - b);
+    const intervals: Interval[] = [];
+    for (let i = 0; i + 1 < xs.length; i += 2) {
+        intervals.push({ start: xs[i]!, end: xs[i + 1]! });
+    }
+    return intervals;
+}
+
+// Same idea as rowFloorIntervals, but for a column, using the layer's own
+// top/bot edges (which alternate start/end when sorted by y).
+function colFloorIntervals(edges: Edge[], col: number): Interval[] {
+    const ys = edges
+        .filter(e => (e.dir === 'top' || e.dir === 'bot') && e.startX <= col && e.endX > col)
+        .map(e => e.startY)
+        .sort((a, b) => a - b);
+    const intervals: Interval[] = [];
+    for (let i = 0; i + 1 < ys.length; i += 2) {
+        intervals.push({ start: ys[i]!, end: ys[i + 1]! });
+    }
+    return intervals;
+}
+
+/**
+ * Combines two layers' edges into the boundary of their union. An edge from
+ * one layer is only a real boundary if the *other* layer doesn't already have
+ * floor on the non-floor side of it - otherwise the union has floor on both
+ * sides and it's an interior seam, not a wall. This covers both layers
+ * meeting exactly at a seam (e.g. a 'bot' edge lined up with a 'top' edge)
+ * and one layer's floor overlapping into the other's interior (e.g. a bridge
+ * whose ends sit on top of already-solid floor with no edge of its own
+ * nearby) - the latter can't be detected by matching edges on the same line,
+ * since the other layer may have no edge there at all.
+ */
+export function mergeEdges(edgesA: Edge[], edgesB: Edge[]): Edge[] {
+    const result: Edge[] = [];
+
+    const cancelHorizontal = (mine: Edge[], other: Edge[]) => {
+        mine.filter(e => e.dir === 'top' || e.dir === 'bot').forEach(e => {
+            // 'top' edge: floor is below the line (its own row), so it's only
+            // real where the other layer lacks floor in the row above.
+            // 'bot' edge: floor is above the line, real where the other layer
+            // lacks floor in the row at the line.
+            const otherRow = e.dir === 'top' ? e.startY - 1 : e.startY;
+            const occupied = rowFloorIntervals(other, otherRow);
+            subtractIntervals([{ start: e.startX, end: e.endX }], occupied).forEach(iv => {
+                result.push({ startX: iv.start, endX: iv.end, startY: e.startY, endY: e.startY, dir: e.dir });
+            });
+        });
+    };
+
+    const cancelVertical = (mine: Edge[], other: Edge[]) => {
+        mine.filter(e => e.dir === 'left' || e.dir === 'right').forEach(e => {
+            // 'left' edge: floor is right of the line, real where the other
+            // layer lacks floor in the column to the left.
+            // 'right' edge: floor is left of the line, real where the other
+            // layer lacks floor in the column at the line.
+            const otherCol = e.dir === 'left' ? e.startX - 1 : e.startX;
+            const occupied = colFloorIntervals(other, otherCol);
+            subtractIntervals([{ start: e.startY, end: e.endY }], occupied).forEach(iv => {
+                result.push({ startX: e.startX, endX: e.startX, startY: iv.start, endY: iv.end, dir: e.dir });
+            });
+        });
+    };
+
+    cancelHorizontal(edgesA, edgesB);
+    cancelHorizontal(edgesB, edgesA);
+    cancelVertical(edgesA, edgesB);
+    cancelVertical(edgesB, edgesA);
+
+    return result;
+}
 
 function flushEdge( edge: Edge | null, output: Edge[]): Edge | null {
     if (edge !== null) {
