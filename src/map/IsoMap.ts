@@ -4,6 +4,33 @@ import GameScene from '../scenes/GameScene';
 import * as Contour from "./contour";
 import RevealManager from '../shaders/RevealManager';
 
+// Per-tile collision shapes from Tiled are defined in the tile's unflipped local
+// space. Flipping the sprite mirrors the art within its existing bounding box
+// without moving that box, so the collision vertices have to be mirrored the same
+// way to stay aligned with what's drawn. Mirroring a single axis also reverses the
+// polygon's winding order, which matters for Matter's concave decomposition -
+// mirroring both axes (180° rotation) cancels back out, so only an odd number of
+// flips needs the winding restored.
+function mirrorCollisionVertices(
+    verts: { x: number; y: number }[],
+    flipH: boolean,
+    flipV: boolean,
+    tileWidth: number,
+    tileHeight: number
+): { x: number; y: number }[] {
+    let result = verts;
+    if (flipH) {
+        result = result.map(v => ({ x: tileWidth - v.x, y: v.y }));
+    }
+    if (flipV) {
+        result = result.map(v => ({ x: v.x, y: tileHeight - v.y }));
+    }
+    if (flipH !== flipV) {
+        result = result.slice().reverse();
+    }
+    return result;
+}
+
 // Matches Matter.js's Vertices.centre: the area-weighted polygon centroid, not the
 // simple average of vertices. Bodies.fromVertices repositions bodies to whatever
 // centroid you tell it, using this same formula internally - passing a plain vertex
@@ -124,6 +151,8 @@ export default class IsoMap {
                     if (obj.x == null || obj.y == null || obj.gid == null || obj.height == null) return;
 
                     const gid = obj.gid;
+                    const flipH = obj.flippedHorizontal ?? false;
+                    const flipV = obj.flippedVertical ?? false;
                     const tileset = this.map.tilesets.find(ts =>
                         gid >= ts.firstgid && gid < ts.firstgid + ts.total
                     )!;
@@ -138,6 +167,8 @@ export default class IsoMap {
                         tileset.image!.key,
                         frame
                     );
+                    sprite.setFlipX(flipH);
+                    sprite.setFlipY(flipV);
                     sprite.setDepth(worldXY.y);
                     this.sprites.push(sprite);
 
@@ -151,19 +182,19 @@ export default class IsoMap {
                     const tly = sprite.y - sprite.originY * sprite.displayHeight;
 
                     for (const shape of group.objects) {
-                        // this shape's vertices, in world space
-                        let verts: { x: number; y: number }[];
+                        // this shape's vertices, in the tile's local (unflipped) space
+                        let localVerts: { x: number; y: number }[];
 
                         if (shape.polygon) {
-                            verts = shape.polygon.map(p => ({
-                                x: tlx + shape.x! + p.x,
-                                y: tly + shape.y! + p.y,
+                            localVerts = shape.polygon.map(p => ({
+                                x: shape.x! + p.x,
+                                y: shape.y! + p.y,
                             }));
                         } else if (shape.rectangle) {
-                            const x0 = tlx + (shape.x ?? 0);
-                            const y0 = tly + (shape.y ?? 0);
+                            const x0 = shape.x ?? 0;
+                            const y0 = shape.y ?? 0;
                             const w = shape.width!, h = shape.height!;
-                            verts = [
+                            localVerts = [
                                 { x: x0,     y: y0     },
                                 { x: x0 + w, y: y0     },
                                 { x: x0 + w, y: y0 + h },
@@ -172,6 +203,11 @@ export default class IsoMap {
                         } else {
                             continue; // ellipse / point — handle separately if you use them
                         }
+
+                        localVerts = mirrorCollisionVertices(localVerts, flipH, flipV, tileset.tileWidth, tileset.tileHeight);
+
+                        // shift into world space
+                        const verts = localVerts.map(v => ({ x: tlx + v.x, y: tly + v.y }));
 
                         // fromVertices centers the body's centroid on (x, y). Matter computes that
                         // centroid internally using the polygon area formula (Vertices.centre), not

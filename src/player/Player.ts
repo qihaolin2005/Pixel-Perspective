@@ -54,7 +54,7 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
 
         directions.forEach(direction => {
             this.anims.create({
-                key: direction,
+                key: `walking-${direction}`,
                 frames: this.anims.generateFrameNumbers('player_walking', {
                     start: current,
                     end: current + 3,
@@ -63,8 +63,18 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
                 repeat: -1
 
             });
+            this.anims.create({
+                key: `idle-${direction}`,
+                frames: this.anims.generateFrameNumbers('player_idle', {
+                    start: current,
+                    end: current + 3,
+                }),
+                frameRate: 10,
+                repeat: -1
+
+            });
             current += 4
-        })
+        });
 
     }
 

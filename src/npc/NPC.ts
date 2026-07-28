@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import GameScene from '../scenes/GameScene';
 import Player from '../player/Player';
-import TextBox from '../UI/TextBox';
+import TextBox, { type DialogueLine } from '../UI/TextBox';
 
 type Direction = 'north' | 'south' | 'east' | 'west' | 'northeast' | 'northwest' | 'southeast' | 'southwest';
 
@@ -12,19 +12,16 @@ const FACING_ANIMATION: Record<Direction, string> = {
     northwest: 'northwest',
     southeast: 'southeast',
     southwest: 'southwest',
-    east: 'southwest',
-    west: 'southeast',
+    east: 'southeast',
+    west: 'southwest',
 };
 
 export default class NPC extends Phaser.Physics.Matter.Sprite {
-    public dialogue: string[];
-    private dialogueIndex: number = 0;
-    private dialogueBox?: Phaser.GameObjects.Rectangle | undefined;
-    private dialogueText?: Phaser.GameObjects.Text | undefined;
+    public dialogue: DialogueLine[];
     public name: string;
     private textBox: TextBox;
 
-    constructor(scene: GameScene, x: number, y: number, texture: string, name: string, dialogue: string[]) {
+    constructor(scene: GameScene, x: number, y: number, texture: string, name: string, dialogue: DialogueLine[]) {
         super(scene.matter.world, x, y, texture);
 
         this.dialogue = dialogue;
@@ -40,8 +37,8 @@ export default class NPC extends Phaser.Physics.Matter.Sprite {
     }
 
     interact(player: Player) {
-        // const direction = this.getDirectionTo(player);
-        // this.anims.play(FACING_ANIMATION[direction], true);
+        const direction = this.getDirectionTo(player);
+        this.anims.play(`${this.texture.key}-${FACING_ANIMATION[direction]}`, true);
 
         if (this.dialogue.length === 0) {
             return;
@@ -61,16 +58,22 @@ export default class NPC extends Phaser.Physics.Matter.Sprite {
     private getDirectionTo(player: Player): Direction {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
-        const angle = Phaser.Math.RadToDeg(Math.atan2(dy, dx));
+        const angle = Phaser.Math.Angle.WrapDegrees(
+            Phaser.Math.RadToDeg(Math.atan2(player.y - this.y, player.x - this.x))
+        );
 
-        if (angle >= -22.5 && angle < 22.5) return 'east';
-        if (angle >= 22.5 && angle < 67.5) return 'southeast';
-        if (angle >= 67.5 && angle < 112.5) return 'south';
-        if (angle >= 112.5 && angle < 157.5) return 'southwest';
-        if (angle >= -67.5 && angle < -22.5) return 'northeast';
-        if (angle >= -112.5 && angle < -67.5) return 'north';
-        if (angle >= -157.5 && angle < -112.5) return 'northwest';
-        return 'west';
+        let direction: Direction;
+
+        if (angle >= -22.5 && angle < 22.5) direction = 'east';
+        else if (angle >= 22.5 && angle < 67.5) direction = 'southeast';
+        else if (angle >= 67.5 && angle < 112.5) direction = 'south';
+        else if (angle >= 112.5 && angle < 157.5) direction = 'southwest';
+        else if (angle >= -67.5 && angle < -22.5) direction = 'northeast';
+        else if (angle >= -112.5 && angle < -67.5) direction = 'north';
+        else if (angle >= -157.5 && angle < -112.5) direction = 'northwest';
+        else direction = 'west';
+
+        return direction;
     }
 
     createAnimation() {

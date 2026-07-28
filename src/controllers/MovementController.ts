@@ -15,14 +15,12 @@ export default class MovementController {
     }
 
     update(time: number, delta: number) {
-
+        let vx = 0;
+        let vy = 0;
+        let dir = this.player.direction;
         if (!this.player.busy) {
             const speed = 2;
-            let vx = 0;
-            let vy = 0;
-
-            let dir = 'none';
-
+            
             if (this.player.cursors.up.isDown && this.player.cursors.left.isDown) {
                 vx = -2/3 * speed;
                 vy = -1/3 * speed;
@@ -60,14 +58,17 @@ export default class MovementController {
                 dir = 'south';
             }
             this.player.setVelocity(vx, vy);
-
-            if (vx !== 0 || vy !== 0) {
-                this.player.anims.play(dir, true);
-                this.player.direction = dir;
-            } else {
-                this.player.anims.stop();
-            }
         }
+        else {
+            this.player.setVelocity(0, 0);
+        }
+
+        if (vx !== 0 || vy !== 0) {
+                this.player.anims.play(`walking-${dir}`, true);
+            } else {
+                this.player.anims.play(`idle-${dir}`, true);
+            }
+            this.player.direction = dir;
 
         this.player.debug();
         this.player.update();
