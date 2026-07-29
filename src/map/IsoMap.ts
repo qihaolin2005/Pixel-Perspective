@@ -70,6 +70,15 @@ export default class IsoMap {
     public tileHeight: integer;
     public points: {x: number, y: number}[][];
     private sprites: Phaser.GameObjects.Image[]
+    // Objects whose footprint spans more than one iso row (e.g. the house) can't use a single
+    // fixed depth - whether the player is in front of or behind them depends on the player's
+    // world-x too. The map author traces the front boundary by hand in Tiled as a sequence of
+    // `depth_point`-tagged point objects; connecting them in order gives a polyline whose y at
+    // the player's current x is recomputed as the sprite's depth every frame.
+    private depthSortedSprites: {
+        sprite: Phaser.GameObjects.Image;
+        segments: { x0: number; y0: number; x1: number; y1: number }[];
+    }[]
 
 
 
@@ -122,6 +131,7 @@ export default class IsoMap {
         });
         this.points = [];
         this.sprites = [];
+        this.depthSortedSprites = [];
         this.addObjects();
     }
 
@@ -167,6 +177,14 @@ export default class IsoMap {
                         tileset.image!.key,
                         frame
                     );
+
+                    console.log("hello");
+                    const tileProps = tileset.getTileProperties(gid) as { depth_sorted?: boolean } | undefined;
+                    if (tileProps?.depth_sorted) {
+                        this.depthSort(obj, tileset, sprite, flipH, flipV);
+                    }
+
+
                     sprite.setFlipX(flipH);
                     sprite.setFlipY(flipV);
                     sprite.setDepth(worldXY.y);
@@ -234,6 +252,80 @@ export default class IsoMap {
                 });
             
         });
+    }
+
+    depthSort(
+        obj: Phaser.Types.Tilemaps.TiledObject,
+        tileset: Phaser.Tilemaps.Tileset,
+        sprite: Phaser.GameObjects.Image,
+        flipH: boolean,
+        flipV: boolean
+    ) {
+        const collisionGroup = tileset.getTileCollisionGroup(obj.gid!);
+        if (!collisionGroup) return;
+
+        // Tiled stores custom properties as a [{name, value}, ...] array, not a plain
+        // object - same shape used for the "floor" layer property elsewhere in this file.
+        const tlx = sprite.x - sprite.originX * sprite.displayWidth;
+        const tly = sprite.y - sprite.originY * sprite.displayHeight;
+
+        const depthPoints = collisionGroup.objects
+            .filter(shape => (shape.properties as any[] | undefined)?.some(p => p.name === 'depth_point'))
+            .map(shape => {
+                const order = (shape.properties as any[])
+                    .find(p => p.name === 'depth_point').value as number;
+
+                const [mirrored] = mirrorCollisionVertices(
+                    [{ x: shape.x ?? 0, y: shape.y ?? 0 }],
+                    flipH, flipV, tileset.tileWidth, tileset.tileHeight
+                );
+
+                return { order, x: tlx + mirrored!.x, y: tly + mirrored!.y };
+            })
+            .sort((a, b) => a.order - b.order);
+
+        // A single point has nowhere to connect to - fall back to the sprite's static depth.
+        if (depthPoints.length < 2) return;
+
+        const segments = depthPoints.slice(1).map((p, i) => ({
+            x0: depthPoints[i]!.x, y0: depthPoints[i]!.y,
+            x1: p.x, y1: p.y,
+        }));
+
+        // Visual check: draw the resulting depth line directly over the sprite so it's
+        // obvious in-game whether it actually traces the intended front boundary.
+        const lineGfx = this.scene.add.graphics();
+        lineGfx.setDepth(999999);
+        lineGfx.lineStyle(2, 0x00ff00, 1);
+        for (const seg of segments) {
+            lineGfx.lineBetween(seg.x0, seg.y0, seg.x1, seg.y1);
+        }
+        lineGfx.fillStyle(0x00ff00, 1);
+        for (const p of depthPoints) {
+            lineGfx.fillCircle(p.x, p.y, 2);
+        }
+
+        this.depthSortedSprites.push({ sprite, segments });
+    }
+
+    // Called every frame - recomputes each depth-sorted sprite's depth as the y-value of its
+    // segments at the player's current world-x, so the player correctly renders in front of or
+    // behind different parts of the structure depending on where along it they're standing.
+    updateDepthSorting(player: Phaser.Physics.Matter.Sprite) {
+        for (const { sprite, segments } of this.depthSortedSprites) {
+            const xs = segments.flatMap(s => [s.x0, s.x1]);
+            const qx = Phaser.Math.Clamp(player.x, Math.min(...xs), Math.max(...xs));
+
+            for (const seg of segments) {
+                const lo = Math.min(seg.x0, seg.x1);
+                const hi = Math.max(seg.x0, seg.x1);
+                if (qx >= lo && qx <= hi) {
+                    const t = hi === lo ? 0 : (qx - seg.x0) / (seg.x1 - seg.x0);
+                    sprite.setDepth(seg.y0 + t * (seg.y1 - seg.y0));
+                    break;
+                }
+            }
+        }
     }
 
     getFloorLayers() {

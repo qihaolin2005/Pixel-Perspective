@@ -5142,7 +5142,7 @@
          "y":0
         }],
  "nextlayerid":58,
- "nextobjectid":771,
+ "nextobjectid":778,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",
@@ -7120,13 +7120,76 @@
                              "width":0,
                              "x":151,
                              "y":127
+                            }, 
+                            {
+                             "height":0,
+                             "id":10,
+                             "name":"",
+                             "opacity":1,
+                             "point":true,
+                             "properties":[
+                                    {
+                                     "name":"depth_point",
+                                     "type":"int",
+                                     "value":0
+                                    }],
+                             "rotation":0,
+                             "type":"",
+                             "visible":true,
+                             "width":0,
+                             "x":11,
+                             "y":117
+                            }, 
+                            {
+                             "height":0,
+                             "id":11,
+                             "name":"",
+                             "opacity":1,
+                             "point":true,
+                             "properties":[
+                                    {
+                                     "name":"depth_point",
+                                     "type":"int",
+                                     "value":1
+                                    }],
+                             "rotation":0,
+                             "type":"",
+                             "visible":true,
+                             "width":0,
+                             "x":91,
+                             "y":157
+                            }, 
+                            {
+                             "height":0,
+                             "id":13,
+                             "name":"",
+                             "opacity":1,
+                             "point":true,
+                             "properties":[
+                                    {
+                                     "name":"depth_point",
+                                     "type":"int",
+                                     "value":2
+                                    }],
+                             "rotation":0,
+                             "type":"",
+                             "visible":true,
+                             "width":0,
+                             "x":151,
+                             "y":127
                             }],
                      "opacity":1,
                      "type":"objectgroup",
                      "visible":true,
                      "x":0,
                      "y":0
-                    }
+                    },
+                 "properties":[
+                        {
+                         "name":"depth_sorted",
+                         "type":"bool",
+                         "value":true
+                        }]
                 }],
          "tilewidth":160
         }],

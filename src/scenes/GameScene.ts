@@ -272,6 +272,7 @@ export default class GameScene extends Phaser.Scene {
 
     update(time: number, delta: number) {
         this.movementController.update(time, delta);
+        this.isomap.updateDepthSorting(this.player);
         this.reveal.update();
 
     }
