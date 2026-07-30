@@ -13,7 +13,6 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
         super(scene.matter.world, x, y, texture);
         this.createAnimation();
         this.setOrigin(0.5, .8);
-        this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000).setDepth(99999);
         this.direction = direction;
         this.interactButton = new InteractButton(scene, "enter").setVisible(false);
         this.busy = false;
@@ -32,6 +31,9 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
     }
 
     debug(){
+        if (!this.currPositionMarker) {
+            this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000).setDepth(99999);
+        }
         this.currPositionMarker.x = this.x;
         this.currPositionMarker.y = this.y;
     }
@@ -41,8 +43,8 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
     }
 
     update() {
-        this.debug;
-        this.setDepth(this.y);
+        this.debug();
+        this.setDepth(this.y + 5);
         this.updateInteract();
     }
 
