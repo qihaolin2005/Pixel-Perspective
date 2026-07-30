@@ -79,6 +79,9 @@ export default class IsoMap {
         sprite: Phaser.GameObjects.Image;
         segments: { x0: number; y0: number; x1: number; y1: number }[];
     }[]
+    // Only sprites whose tile is tagged `occludable: true` in Tiled are registered with
+    // RevealManager - most decor shouldn't ever fade out just because the player walks near it.
+    private occludableSprites: Phaser.GameObjects.Image[]
 
 
 
@@ -132,6 +135,7 @@ export default class IsoMap {
         this.points = [];
         this.sprites = [];
         this.depthSortedSprites = [];
+        this.occludableSprites = [];
         this.addObjects();
     }
 
@@ -179,9 +183,13 @@ export default class IsoMap {
                     );
 
                     console.log("hello");
-                    const tileProps = tileset.getTileProperties(gid) as { depth_sorted?: boolean } | undefined;
+                    const tileProps = tileset.getTileProperties(gid) as
+                        { depth_sorted?: boolean; occludable?: boolean } | undefined;
                     if (tileProps?.depth_sorted) {
                         this.depthSort(obj, tileset, sprite, flipH, flipV);
+                    }
+                    if (tileProps?.occludable) {
+                        this.occludableSprites.push(sprite);
                     }
 
 
@@ -337,12 +345,8 @@ export default class IsoMap {
     }
 
     applyObjectLayerWithReveal(reveal: RevealManager) {
-            const isOccluder = true;
-
-            this.sprites.forEach(sprite => {
-                if (isOccluder) {
-                    reveal.register(sprite);
-                }  
+            this.occludableSprites.forEach(sprite => {
+                reveal.register(sprite);
             });
     }
 
