@@ -87,6 +87,7 @@ export default class IsoMap {
     private background!: Phaser.GameObjects.Image;
     private walls: MatterJS.BodyType[];
     private collisionsList: MatterJS.BodyType[];
+    private transitionsList: MatterJS.BodyType[];
 
 
 
@@ -146,6 +147,7 @@ export default class IsoMap {
         this.npcList = [];
         this.collisionsList = [];
         this.walls = [];
+        this.transitionsList = [];
 
         this.addObjects();
         this.getTransitions();
@@ -322,7 +324,14 @@ export default class IsoMap {
                 wall.collisionFilter.mask = 0;
             }
         })
-
+        this.transitionsList.forEach(transition => {
+            if (flag) {
+                transition.collisionFilter.mask = 0xFFFFFFFF;
+            }
+            else {
+                transition.collisionFilter.mask = 0;
+            }
+        })
         this.collisionsList.forEach(collision => {
             if (flag) {
                 collision.collisionFilter.mask = 0xFFFFFFFF;
@@ -427,22 +436,24 @@ export default class IsoMap {
         const transitionLayer = this.map.getObjectLayer('transition');
         if (transitionLayer != null) {
             for (const obj of transitionLayer.objects) {
-            const verts = Transformations.isoRectVertices(
-                obj.x!, obj.y!, obj.width!, obj.height!,
-                this.tileWidth, this.tileHeight, this.xOffset
-            );
-            const { x: cx, y: cy } = polygonCentroid(verts);
-            const properties = Object.fromEntries(
-                (obj.properties ?? []).map(p => [p.name, p.value])
-            );
+                const verts = Transformations.isoRectVertices(
+                    obj.x!, obj.y!, obj.width!, obj.height!,
+                    this.tileWidth, this.tileHeight, this.xOffset
+                );
+                const { x: cx, y: cy } = polygonCentroid(verts);
+                const properties = Object.fromEntries(
+                    (obj.properties ?? []).map(p => [p.name, p.value])
+                );
 
-            const transition = this.scene.matter.add.fromVertices(cx, cy, verts, {
-                isStatic: true,
-                isSensor: true,
-                label: "transition",
-            });
-            transition.plugin = properties;
-        }
+                const transition = this.scene.matter.add.fromVertices(cx, cy, verts, {
+                    isStatic: true,
+                    isSensor: true,
+                    label: "transition",
+                });
+                transition.plugin = properties;
+
+                this.transitionsList.push(transition);
+            }
         }
 
     }
