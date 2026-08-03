@@ -12,7 +12,6 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
     constructor (scene: GameScene, x: number, y: number, texture: string, direction: string = "west") {
         super(scene.matter.world, x, y, texture);
         this.createAnimation();
-        this.setOrigin(0.5, .8);
         this.direction = direction;
         this.interactButton = new InteractButton(scene, "enter").setVisible(false);
         this.busy = false;
@@ -28,6 +27,7 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
         this.setFixedRotation();
         this.setFriction(0);
         this.setFrictionAir(0);
+        this.scene.matter.world.on('afterupdate', this.snapWhenStill);
         this.cursors = this.scene.input.keyboard!.createCursorKeys();
     }
 
@@ -44,6 +44,24 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
 
     getCurrentLayer() {
         return 2;
+    }
+
+    // Matter's position solver ejects overlapping bodies by fractional amounts, so spawning on
+    // top of collision geometry - which every room transition does - leaves the body a fraction
+    // of a pixel off with nothing to pull it back. Two constraints on where this can run:
+    // 'afterupdate', because a snap in the scene update phase is undone by the step that
+    // follows it; and only while standing still, because rounding every frame would discard
+    // the remainder that normalized diagonal movement carries, flattening 2:1 to 45 degrees.
+    private snapWhenStill = () => {
+        const velocity = (this.body as MatterJS.BodyType).velocity;
+        if (velocity.x !== 0 || velocity.y !== 0) {
+            return;
+        }
+        const x = Math.round(this.x);
+        const y = Math.round(this.y);
+        if (x !== this.x || y !== this.y) {
+            this.setPosition(x, y);
+        }
     }
 
     update() {

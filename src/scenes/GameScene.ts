@@ -175,7 +175,7 @@ export default class GameScene extends Phaser.Scene {
         this.mapMap.set('room', roomMap);
         this.mapMap.set('farm', farmMap);
 
-        this.cameras.main.setZoom(2);
+        this.cameras.main.setZoom(3);
         this.player = new Player(this, 0, 0, 'player_idle');
 
         this.reveal = new RevealManager(this);
@@ -205,7 +205,7 @@ export default class GameScene extends Phaser.Scene {
         farmMap.setVisible(false);
         roomMap.setVisible(false);
 
-        this.launchMap('farm', "SpawnPoint", {});
+        this.launchMap('room', "SpawnPoint", {});
 
 
         this.player.addToScene();
