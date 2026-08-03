@@ -1,6 +1,6 @@
 
-export function calculateOffset(mapWidth: integer, mapHeight: integer, tilePixel: number) {
-    return Math.abs(mapWidth - mapHeight) * (tilePixel / 2);
+export function calculateOffset(mapHeight: integer, tilePixel: number) {
+    return mapHeight * (tilePixel / 2);
 }
 /**
  * 

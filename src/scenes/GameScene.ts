@@ -81,6 +81,7 @@ export default class GameScene extends Phaser.Scene {
         });
         this.load.image('orig_big', 'assets/backgrounds/orig_big.png');
         this.load.image('orig_big_flipped', 'assets/backgrounds/orig_big_flipped.png');
+        this.load.image('orange_background', 'assets/backgrounds/orange_background.png');
         this.load.image('textbox', 'assets/images/UI_TextBox.png');
 
         this.load.spritesheet('floor', 'assets/images/room/floor.png', {
@@ -155,21 +156,20 @@ export default class GameScene extends Phaser.Scene {
         const walls = {tilesetName: 'walls', imageName: 'walls'};
         const wall_decor = {tilesetName: 'wall_decor', imageName: 'wall_decor'};
 
-        const room_tileset = [floor, room_objects, large_objects, walls, wall_decor]
+        const room_tileset = [floor, room_objects, large_objects, walls, wall_decor];
 
-        this.cameras.main.setZoom(1);
 
         this.enterKey = this.input.keyboard.addKey(
             Phaser.Input.Keyboard.KeyCodes.ENTER
         );
-        const roomMap = new IsoMap(this, 'room', room_tileset);
         const farmMap = new IsoMap(this, 'farm', farm_tileset);
+        const roomMap = new IsoMap(this, 'room', room_tileset);
 
         this.mapMap = new Map<string, IsoMap>();
         this.mapMap.set('room', roomMap);
         this.mapMap.set('farm', farmMap);
 
-        
+        this.cameras.main.setZoom(2);
         this.player = new Player(this, 0, 0, 'player_idle');
 
         this.reveal = new RevealManager(this);
@@ -177,11 +177,34 @@ export default class GameScene extends Phaser.Scene {
         farmMap.applyObjectLayerWithReveal(this.reveal);
         roomMap.applyObjectLayerWithReveal(this.reveal);
 
-        this.launchMap('room', "SpawnPoint", {});
+
+
+        const farmBG = new Phaser.GameObjects.Image(
+            this,
+            0,
+            0,
+            "orig_big"
+        );
+        farmMap.setbackground(farmBG);
+
+
+        const roomBG = new Phaser.GameObjects.Image(
+            this,
+            0,
+            0,
+            "orange_background"
+        );
+        roomMap.setbackground(roomBG);
+
+        farmMap.setVisible(false);
+        roomMap.setVisible(false);
+
+        this.launchMap('farm', "SpawnPoint", {});
 
 
         this.player.addToScene();
-        this.cameras.main.startFollow(this.player, false);
+
+        this.cameras.main.startFollow(this.player, true);
 
         const blackSlimeDialogue = 
         ["Oh! A new visitor!", "Welcome to Pixel Perspective, or at least that's what everyone calls this place.", 
@@ -271,20 +294,6 @@ export default class GameScene extends Phaser.Scene {
         this.spawnSlime(farmMap, "Slime_White", "white", "White Slime", whiteSlimeDialogue);
         this.spawnSlime(farmMap, "Slime_Yellow", "yellow", "Bob", yellowSlimeDialogue);
         this.movementController = new MovementController(this.isomap, this.player);
-
-        // const bg = this.add.image(0, 0, "orig_big")
-        //     .setOrigin(0, 0);
-
-        // const scale = Math.min(
-        //     3072 / bg.width,
-        //     1536 / bg.height
-        // );
-
-        // bg.setScale(scale);
-        // bg.setDepth(-1000);
-
-        farmMap.setVisible(false);
-
 
     }
 

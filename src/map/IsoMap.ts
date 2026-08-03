@@ -84,6 +84,9 @@ export default class IsoMap {
     // RevealManager - most decor shouldn't ever fade out just because the player walks near it.
     private occludableSprites: Phaser.GameObjects.Image[]
     private npcList: NPC[];
+    private background!: Phaser.GameObjects.Image;
+    private walls: MatterJS.BodyType[];
+    private collisionsList: MatterJS.BodyType[];
 
 
 
@@ -93,7 +96,7 @@ export default class IsoMap {
         this.map = this.scene.make.tilemap({ 
             key: key
         });
-        this.xOffset = Transformations.calculateOffset(this.map.width, this.map.height, this.map.tileWidth);
+        this.xOffset = Transformations.calculateOffset(this.map.height, this.map.tileWidth);
         console.log(this.map.width, this.map.height, this.map.tileWidth, this.map.tileHeight, this.map.widthInPixels, this.map.heightInPixels);
         this.layerOffsetX = this.xOffset - this.map.tileWidth / 2;
         this.layerOffsetY = -this.map.tileWidth/2;
@@ -141,6 +144,9 @@ export default class IsoMap {
         this.depthSortedSprites = [];
         this.occludableSprites = [];
         this.npcList = [];
+        this.collisionsList = [];
+        this.walls = [];
+
         this.addObjects();
         this.getTransitions();
         this.setFloorLayers();
@@ -158,6 +164,25 @@ export default class IsoMap {
         const spawnTiled = Transformations.TiledPixelsToCoords(spawn.x!, spawn.y!, this.map.tileWidth, this.map.tileHeight);
         const spawnWorldPixels = Transformations.isoCoordsToWorld(spawnTiled, this.xOffset);
         return spawnWorldPixels;
+
+    }
+
+    setbackground(source: Phaser.GameObjects.Image) {
+        this.background = source;
+        this.background.setOrigin(0, 0)
+        this.background.x = 0;
+        this.background.y = 0;
+        this.scene.add.existing(this.background);
+        // Math.max (cover), not Math.min (contain): scaling by the smaller ratio leaves
+        // gaps on one axis. Uniform setScale keeps the source image undistorted, so the
+        // larger axis overflows the map bounds instead - fine for a depth -10 backdrop.
+        const scale = Math.max(
+            this.widthInPixels / this.background.width,
+            this.heightInPixels / this.background.height
+        );
+
+        this.background.setScale(scale);
+        this.background.setDepth(-10);
 
     }
 
@@ -259,7 +284,6 @@ export default class IsoMap {
                         const { x: cx, y: cy } = polygonCentroid(verts);
 
                         const body = this.scene.matter.add.fromVertices(cx, cy, verts, { isStatic: true });
-
                         // Concave shapes get decomposed into convex parts (via poly-decomp), and for
                         // static bodies Matter averages each part's centroid *unweighted* by area
                         // (Body._totalProperties treats static parts as mass 1 regardless of size),
@@ -272,6 +296,8 @@ export default class IsoMap {
                         if (dx !== 0 || dy !== 0) {
                             this.scene.matter.body.translate(body, { x: dx, y: dy });
                         }
+
+                        this.collisionsList.push(body);
                     }
                 });
             
@@ -288,6 +314,24 @@ export default class IsoMap {
         this.npcList.forEach(npc => {
             npc.setVisible(flag);
         });
+        this.walls.forEach(wall => {
+            if (flag) {
+                wall.collisionFilter.mask = 0xFFFFFFFF;
+            }
+            else {
+                wall.collisionFilter.mask = 0;
+            }
+        })
+
+        this.collisionsList.forEach(collision => {
+            if (flag) {
+                collision.collisionFilter.mask = 0xFFFFFFFF;
+            }
+            else {
+                collision.collisionFilter.mask = 0;
+            }
+        })
+        this.background.setVisible(flag);
 
     }
 
@@ -511,7 +555,7 @@ export default class IsoMap {
 
                 //centerY -= this.tileHeight;
 
-                this.scene.matter.add.rectangle(
+                const wall = this.scene.matter.add.rectangle(
                     centerX,
                     centerY,
                     length,
@@ -521,6 +565,7 @@ export default class IsoMap {
                         angle
                     }
                 );
+                this.walls.push(wall);
             });
         });
     }
