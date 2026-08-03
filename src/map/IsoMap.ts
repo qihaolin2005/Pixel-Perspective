@@ -3,6 +3,7 @@ import * as Transformations from "../utils/transformations";
 import GameScene from '../scenes/GameScene';
 import * as Contour from "./contour";
 import RevealManager from '../shaders/RevealManager';
+import NPC from '../npc/NPC';
 
 // Per-tile collision shapes from Tiled are defined in the tile's unflipped local
 // space. Flipping the sprite mirrors the art within its existing bounding box
@@ -82,6 +83,7 @@ export default class IsoMap {
     // Only sprites whose tile is tagged `occludable: true` in Tiled are registered with
     // RevealManager - most decor shouldn't ever fade out just because the player walks near it.
     private occludableSprites: Phaser.GameObjects.Image[]
+    private npcList: NPC[];
 
 
 
@@ -92,8 +94,9 @@ export default class IsoMap {
             key: key
         });
         this.xOffset = Transformations.calculateOffset(this.map.width, this.map.height, this.map.tileWidth);
-        this.layerOffsetX = this.xOffset - 16;
-        this.layerOffsetY = -16;
+        console.log(this.map.width, this.map.height, this.map.tileWidth, this.map.tileHeight, this.map.widthInPixels, this.map.heightInPixels);
+        this.layerOffsetX = this.xOffset - this.map.tileWidth / 2;
+        this.layerOffsetY = -this.map.tileWidth/2;
         this.widthInPixels = this.map.widthInPixels;
         this.heightInPixels = this.map.heightInPixels;
         this.tileWidth = this.map.tileWidth;
@@ -125,10 +128,11 @@ export default class IsoMap {
                     console.log("collidable tile found");
                 }
             });
-            
+
 
 
             layer.setCollisionByProperty({ collides: true });
+            this.scene.renderLayers.floor.add(layer);
 
             this.layers.push(layer);
         });
@@ -136,7 +140,10 @@ export default class IsoMap {
         this.sprites = [];
         this.depthSortedSprites = [];
         this.occludableSprites = [];
+        this.npcList = [];
         this.addObjects();
+        this.getTransitions();
+        this.setFloorLayers();
     }
 
     getSpawnPoint(spawnName: String) {
@@ -155,11 +162,19 @@ export default class IsoMap {
     }
 
     addObjects(){
+            // Decoration layers (no collision on any of their tiles - e.g. fruit sitting on a
+            // tree) each get their own Layer, keyed by Tiled layer name, rendering above the
+            // object layer. Layers with collidable tiles (house, fence, wall, trees) share the
+            // object layer so their Y-interleaving with the player is untouched.
             this.map.getObjectLayerNames().forEach(layerName => {
 
                 const layer = this.map.getObjectLayer(layerName);
-                const debug = this.scene.add.graphics({ lineStyle: { width: 1, color: 0xff0000 } });
-                debug.setDepth(999999);
+                const objectsWithGid = layer!.objects.filter(obj => obj.gid != null);
+                const isGround = objectsWithGid.length === 0 ||
+                    objectsWithGid.some(obj => this.hasCollision(obj.gid!));
+                const targetLayer = isGround
+                    ? this.scene.renderLayers.object
+                    : this.scene.renderLayers.getDecorationLayer(this.scene, layerName);
 
                 layer!.objects.forEach(obj => {
                     if (obj.x == null || obj.y == null || obj.gid == null || obj.height == null) return;
@@ -195,6 +210,7 @@ export default class IsoMap {
 
                     sprite.setFlipX(flipH);
                     sprite.setFlipY(flipV);
+                    targetLayer.add(sprite);
                     sprite.setDepth(worldXY.y);
                     this.sprites.push(sprite);
 
@@ -262,6 +278,23 @@ export default class IsoMap {
         });
     }
 
+    setVisible(flag: boolean) {
+        this.layers.forEach(layer => {
+            layer.setVisible(flag);
+        });
+        this.sprites.forEach(sprite => {
+            sprite.setVisible(flag);
+        });
+        this.npcList.forEach(npc => {
+            npc.setVisible(flag);
+        });
+
+    }
+
+    addNPC(npc: NPC) {
+        this.npcList.push(npc);
+    }
+
     depthSort(
         obj: Phaser.Types.Tilemaps.TiledObject,
         tileset: Phaser.Tilemaps.Tileset,
@@ -303,7 +336,7 @@ export default class IsoMap {
         // Visual check: draw the resulting depth line directly over the sprite so it's
         // obvious in-game whether it actually traces the intended front boundary.
         const lineGfx = this.scene.add.graphics();
-        lineGfx.setDepth(999999);
+        this.scene.renderLayers.debug.add(lineGfx);
         lineGfx.lineStyle(2, 0x00ff00, 1);
         for (const seg of segments) {
             lineGfx.lineBetween(seg.x0, seg.y0, seg.x1, seg.y1);
@@ -344,6 +377,38 @@ export default class IsoMap {
         );
     }
 
+    getTransitions() {
+        const transitionLayer = this.map.getObjectLayer('transition');
+        if (transitionLayer != null) {
+            for (const obj of transitionLayer.objects) {
+            const verts = Transformations.isoRectVertices(
+                obj.x!, obj.y!, obj.width!, obj.height!,
+                this.tileWidth, this.tileHeight, this.xOffset
+            );
+            const { x: cx, y: cy } = polygonCentroid(verts);
+            const properties = Object.fromEntries(
+                (obj.properties ?? []).map(p => [p.name, p.value])
+            );
+
+            const transition = this.scene.matter.add.fromVertices(cx, cy, verts, {
+                isStatic: true,
+                isSensor: true,
+                label: "transition",
+            });
+            transition.plugin = properties;
+        }
+        }
+
+    }
+    
+    
+
+    private hasCollision(gid: number): boolean {
+        const tileset = this.map.tilesets.find(ts => gid >= ts.firstgid && gid < ts.firstgid + ts.total);
+        const group = tileset?.getTileCollisionGroup(gid) as { objects: unknown[] } | undefined;
+        return !!group && group.objects.length > 0;
+    }
+
     applyObjectLayerWithReveal(reveal: RevealManager) {
             this.occludableSprites.forEach(sprite => {
                 reveal.register(sprite);
@@ -357,11 +422,17 @@ export default class IsoMap {
         // const mergeFloor = Contour.CreateTransitionLayer(floor[1]!, floor[0]!);
         // test.push(mergeFloor);
         let floorPoints = Contour.generateEdges(floor);
-        let combine = Contour.mergeEdges(floorPoints[0]!, floorPoints[1]!);
         const points = [];
-        points.push(combine);
+        if (floorPoints.length > 1) {
+            let combine = Contour.mergeEdges(floorPoints[0]!, floorPoints[1]!);
+            points.push(combine);
 
-        console.log(points);
+        }
+        else {
+            points.push(floorPoints[0]!);
+        }
+
+        console.log('points', points);
 
         points.forEach(pointArray => {
             pointArray.forEach(point => {
@@ -370,8 +441,8 @@ export default class IsoMap {
                     {
                         x: point.startX,
                         y: point.startY,
-                        tileWidth: 32,
-                        tileHeight: 16
+                        tileWidth: this.tileWidth,
+                        tileHeight: this.tileHeight
                     },
                     this.xOffset
                 );
@@ -380,8 +451,8 @@ export default class IsoMap {
                     {
                         x: point.endX,
                         y: point.endY,
-                        tileWidth: 32,
-                        tileHeight: 16
+                        tileWidth: this.tileWidth,
+                        tileHeight: this.tileHeight
                     },
                     this.xOffset
                 );

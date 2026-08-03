@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import * as Transformations from "../utils/transformations";
 import Player from '../player/Player';
 import IsoMap from '../map/IsoMap';
+import RenderLayers from '../map/RenderLayers';
 import MovementController from '../controllers/MovementController.js';
 import RevealManager from '../shaders/RevealManager';
 import NPC from '../npc/NPC';
@@ -15,8 +16,10 @@ export default class GameScene extends Phaser.Scene {
     public player!: Player;
     private movementController!: MovementController;
     public interactables: Phaser.GameObjects.Sprite[];
-    public enterKey: Phaser.Input.Keyboard.Key;
-    private isomap : IsoMap;
+    public enterKey!: Phaser.Input.Keyboard.Key;
+    private isomap! : IsoMap;
+    private mapMap!: Map<string, IsoMap>;
+    public renderLayers!: RenderLayers;
 
     
     constructor() {
@@ -25,7 +28,8 @@ export default class GameScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.tilemapTiledJSON('map', 'assets/maps/farm.tmj');
+        this.load.tilemapTiledJSON('farm', 'assets/maps/farm.tmj');
+        this.load.tilemapTiledJSON('room', 'assets/maps/room.tmj');
         this.load.spritesheet('Objects', 'assets/images/Objects.png', {
             frameWidth: 32,
             frameHeight: 32
@@ -79,6 +83,28 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('orig_big_flipped', 'assets/backgrounds/orig_big_flipped.png');
         this.load.image('textbox', 'assets/images/UI_TextBox.png');
 
+        this.load.spritesheet('floor', 'assets/images/room/floor.png', {
+            frameWidth: 80,
+            frameHeight: 80
+        });
+        this.load.spritesheet('room_objects', 'assets/images/room/room_objects.png', {
+            frameWidth: 80,
+            frameHeight: 80
+        });
+        this.load.spritesheet('large_objects', 'assets/images/room/large_objects.png', {
+            frameWidth: 160,
+            frameHeight: 80
+        });
+        this.load.spritesheet('walls', 'assets/images/room/walls.png', {
+            frameWidth: 80,
+            frameHeight: 80
+        });
+        this.load.spritesheet('wall_decor', 'assets/images/room/wall_decor.png', {
+            frameWidth: 80,
+            frameHeight: 80
+        });
+        
+
         this.load.addFile(new WebFontFile(this.load, 'PixelFont', 'assets/fonts/monogram/ttf/monogram.ttf'));
         this.load.json('monogramPixelMask', 'assets/fonts/monogram/bitmap/monogram-bitmap.json');
 
@@ -102,10 +128,13 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
+        this.renderLayers = new RenderLayers(this);
+        this.collisionLogic()
         createPixelBitmapFont(this, 'monogramPixelMask');
 
         //const free_tile_set = {tilesetName: 'Free ver', imageName: 'free_ver'};
         //const tree_3x3 = {tilesetName: 'tree_3x3', imageName: 'tree_3x3'};
+        
         const medium_trees = {tilesetName: 'medium_trees', imageName: 'medium_trees'};
         const Trees = {tilesetName: 'Trees', imageName: 'Trees'};
         const Terrain = {tilesetName: 'Terrain', imageName: 'Terrain'};
@@ -118,24 +147,39 @@ export default class GameScene extends Phaser.Scene {
         const tree_9x9 = {tilesetName: 'tree_9x9', imageName: 'tree_9x9'};
         const house = {tilesetName: 'House', imageName: 'House'};
 
-        const tileset = [objects, tree_9x9, medium_trees, Trees, Terrain, No_Top_Ground, Wooden_Slabs, house];
+        const farm_tileset = [objects, tree_9x9, medium_trees, Trees, Terrain, No_Top_Ground, Wooden_Slabs, house,];
 
-        this.isomap = new IsoMap(this, 'map', tileset);
-        console.log(
-            this.scale.width,
-            this.scale.height,
-            this.cameras.main.displayWidth,
-            this.cameras.main.displayHeight
-        );
-        this.cameras.main.setZoom(2);
+        const floor = {tilesetName: 'floor', imageName: 'floor'};
+        const room_objects = {tilesetName: 'room_objects', imageName: 'room_objects'};
+        const large_objects = {tilesetName: 'large_objects', imageName: 'large_objects'};
+        const walls = {tilesetName: 'walls', imageName: 'walls'};
+        const wall_decor = {tilesetName: 'wall_decor', imageName: 'wall_decor'};
+
+        const room_tileset = [floor, room_objects, large_objects, walls, wall_decor]
+
+        this.cameras.main.setZoom(1);
 
         this.enterKey = this.input.keyboard.addKey(
             Phaser.Input.Keyboard.KeyCodes.ENTER
         );
-   
+        const roomMap = new IsoMap(this, 'room', room_tileset);
+        const farmMap = new IsoMap(this, 'farm', farm_tileset);
 
-        const spawnWorldPixels = this.isomap.getSpawnPoint("SpawnPoint");
-        this.player = new Player(this, spawnWorldPixels.x, spawnWorldPixels.y, 'player_idle');
+        this.mapMap = new Map<string, IsoMap>();
+        this.mapMap.set('room', roomMap);
+        this.mapMap.set('farm', farmMap);
+
+        
+        this.player = new Player(this, 0, 0, 'player_idle');
+
+        this.reveal = new RevealManager(this);
+        this.reveal.setPlayer(this.player);
+        farmMap.applyObjectLayerWithReveal(this.reveal);
+        roomMap.applyObjectLayerWithReveal(this.reveal);
+
+        this.launchMap('room', "SpawnPoint", {});
+
+
         this.player.addToScene();
         this.cameras.main.startFollow(this.player, false);
 
@@ -220,53 +264,27 @@ export default class GameScene extends Phaser.Scene {
             "Here go give it a try, you can see that walking off the edge is impossible! 100% safe and sound!"
         ]
 
-        this.spawnSlime("Slime_Black", "black", "Black Slime", blackSlimeDialogue);
-        this.spawnSlime("Slime_Pink", "pink", "Pink Slime", pinkSlimeDialogue);
-        this.spawnSlime("Slime_Blue", "blue", "🔵", blueSlimeDialogue);
-        this.spawnSlime("Slime_Green", "green", "Green Slime", greenSlimeDialogue);
-        this.spawnSlime("Slime_White", "white", "White Slime", whiteSlimeDialogue);
-        this.spawnSlime("Slime_Yellow", "yellow", "Bob", yellowSlimeDialogue);
+        this.spawnSlime(farmMap, "Slime_Black", "black", "Black Slime", blackSlimeDialogue);
+        this.spawnSlime(farmMap, "Slime_Pink", "pink", "Pink Slime", pinkSlimeDialogue);
+        this.spawnSlime(farmMap, "Slime_Blue", "blue", "🔵", blueSlimeDialogue);
+        this.spawnSlime(farmMap, "Slime_Green", "green", "Green Slime", greenSlimeDialogue);
+        this.spawnSlime(farmMap, "Slime_White", "white", "White Slime", whiteSlimeDialogue);
+        this.spawnSlime(farmMap, "Slime_Yellow", "yellow", "Bob", yellowSlimeDialogue);
         this.movementController = new MovementController(this.isomap, this.player);
 
-        
-        //isomap.createCollisionBodies();
+        // const bg = this.add.image(0, 0, "orig_big")
+        //     .setOrigin(0, 0);
 
-        this.reveal = new RevealManager(this);
-        this.reveal.setPlayer(this.player);
-        this.isomap.applyObjectLayerWithReveal(this.reveal);
+        // const scale = Math.min(
+        //     3072 / bg.width,
+        //     1536 / bg.height
+        // );
 
-        const corners = [
-            { x: 0, y: 0 },
-            { x: 64, y: 0 },
-            { x: 0, y: 32 },
-            { x: 64, y: 32 },
-            { x: 22, y: 12 },
-        ];
+        // bg.setScale(scale);
+        // bg.setDepth(-1000);
 
-        for (const c of corners) {
-            const p = Transformations.isoCoordsToWorld({
-                x: c.x,
-                y: c.y,
-                tileWidth: 32,
-                tileHeight: 16,
-            }, this.isomap.xOffset);
+        farmMap.setVisible(false);
 
-            this.add.circle(p.x, p.y, 5, 0xff0000);
-            this.add.text(p.x + 5, p.y, `${c.x},${c.y}`);
-        }
-
-        this.isomap.setFloorLayers();
-
-        const bg = this.add.image(0, 0, "orig_big")
-            .setOrigin(0, 0);
-
-        const scale = Math.min(
-            3072 / bg.width,
-            1536 / bg.height
-        );
-
-        bg.setScale(scale);
-        bg.setDepth(-1000);
 
     }
 
@@ -277,14 +295,52 @@ export default class GameScene extends Phaser.Scene {
 
     }
 
-    spawnSlime(spawnName: string, color: string, name: string, dialogue: DialogueLine[]) {
-        const spawn = this.isomap.getSpawnPoint(spawnName);
+    spawnSlime(map: IsoMap, spawnName: string, color: string, name: string, dialogue: DialogueLine[]) {
+        const spawn = map.getSpawnPoint(spawnName);
         const slime = new NPC(this, spawn.x, spawn.y, `slimes_${color}`, name, dialogue);
         this.interactables.push(slime);
+        map.addNPC(slime);
         slime.play(`slimes_${color}-south`);
+    }
+
+
+    launchMap(mapName: string, spawnName: string, spawnNPC: {}) {
+        const map = this.mapMap.get(mapName);
+        if (map == null) {
+            throw new Error(`${mapName} is not a map`);
+        }
+        if (this.isomap != null) {
+            this.isomap.setVisible(false);
+        }
+        this.isomap = map;
+        this.isomap.setVisible(true);
+        const spawnPoint = this.isomap.getSpawnPoint(spawnName);
+        this.player.setPosition(spawnPoint.x, spawnPoint.y);
+
+    }
+
+    collisionLogic() {
+            this.matter.world.on("collisionstart",
+                (event: MatterJS.IEventCollision<MatterJS.BodyType>) => {
+                for (const pair of event.pairs) {
+                    const bodyA = pair.bodyA as MatterJS.BodyType;
+                    const bodyB = pair.bodyB as MatterJS.BodyType;
+
+                    if (
+                        (bodyA.label === "player" && bodyB.label === "transition") ||
+                        (bodyB.label === "player" && bodyA.label === "transition")
+                    ) {
+                        const transition = bodyA.label == 'transition' ? bodyA.plugin : bodyB.plugin;
+                        const map = transition.map;
+                        const SpawnPoint = transition.SpawnPoint;
+                        
+                        this.launchMap(map, SpawnPoint, {});
+                    }
+                }
+            }
+        );
     }
     
     
 
 }
-

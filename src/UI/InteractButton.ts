@@ -22,8 +22,7 @@ export default class InteractButton extends Phaser.GameObjects.Sprite {
         )
         this.createAnimation();
         scene.add.existing(this);
-         this.setScrollFactor(0)
-            .setDepth(9999)
+        this.setScrollFactor(0);
         this.play("loop");
 
     }

@@ -29,11 +29,35 @@ export function isoCoordsToWorld({x, y, tileWidth, tileHeight}:
  */
 export function TiledPixelsToCoords (x: number, y: number, tileWidth: number, tileHeight: number) {
     return {
-        x : Math.floor (x / (tileWidth / 2)),
-        y : Math.floor(y / (tileHeight)),
+        x : x / (tileWidth / 2),
+        y : y / tileHeight,
         tileWidth: tileWidth,
         tileHeight: tileHeight,
     };
+}
+
+/**
+ * Transforms a Tiled rectangle object (x, y, width, height, all in Tiled pixel space)
+ * into its four corners in isometric world space. Tiled applies the same iso shear to
+ * rectangle objects that it does to everything else, so an axis-aligned rectangle
+ * renders as a rotated parallelogram - transforming each corner individually (rather
+ * than just the center) reproduces that shear.
+ */
+export function isoRectVertices(
+    x: number, y: number, width: number, height: number,
+    tileWidth: number, tileHeight: number, xOffset: number
+): { x: number; y: number }[] {
+    const corners = [
+        { x, y },
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height },
+    ];
+
+    return corners.map(corner => {
+        const isoCoords = TiledPixelsToCoords(corner.x, corner.y, tileWidth, tileHeight);
+        return isoCoordsToWorld(isoCoords, xOffset);
+    });
 }
 
 export function worldToIsoCoords(x: number, y: number, tileWidth: number, tileHeight: number, xOffset: number) {

@@ -16,13 +16,14 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
         this.direction = direction;
         this.interactButton = new InteractButton(scene, "enter").setVisible(false);
         this.busy = false;
-
     }
 
     addToScene() {
         this.scene.add.existing(this);
+        (this.scene as GameScene).renderLayers.object.add(this);
         this.setRectangle(12, 10, {
-            render: { sprite: { xOffset: 0, yOffset: 0.3 } }
+            render: { sprite: { xOffset: 0, yOffset: 0.3 } },
+            label: "player",
         });
         this.setFixedRotation();
         this.setFriction(0);
@@ -32,7 +33,8 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
 
     debug(){
         if (!this.currPositionMarker) {
-            this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000).setDepth(99999);
+            this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000);
+            (this.scene as GameScene).renderLayers.debug.add(this.currPositionMarker);
         }
         this.currPositionMarker.x = this.x;
         this.currPositionMarker.y = this.y;

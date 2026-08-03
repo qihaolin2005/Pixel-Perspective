@@ -49,8 +49,8 @@ export default class TextBox {
         );
 
         this.container.setScrollFactor(0)
-        .setScale(1)
-        .setDepth(9999);
+        .setScale(1);
+        scene.renderLayers.ui.add(this.container);
 
         this.background = scene.add.image(
             0,
@@ -69,11 +69,6 @@ export default class TextBox {
         const scale = Math.min(
             (this.background.displayWidth * 0.3 - padding) / this.portrait.width,
             (this.background.displayHeight - padding) / this.portrait.height
-        );
-        this.portrait = scene.add.sprite(
-            -this.background.width / 1.36,
-            0,
-            npc.texture.key
         );
 
         const npcName = remapEmojiText(npc.name);

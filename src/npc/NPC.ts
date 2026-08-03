@@ -27,6 +27,7 @@ export default class NPC extends Phaser.Physics.Matter.Sprite {
         this.dialogue = dialogue;
 
         scene.add.existing(this);
+        scene.renderLayers.object.add(this);
         this.createAnimation();
         this.setStatic(true);
         this.setDepth(this.y)
