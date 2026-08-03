@@ -32,12 +32,14 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
     }
 
     debug(){
-        if (!this.currPositionMarker) {
-            this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000);
-            (this.scene as GameScene).renderLayers.debug.add(this.currPositionMarker);
+        if (this.scene.matter.world.drawDebug) {
+            if (!this.currPositionMarker) {
+                this.currPositionMarker = this.scene.add.rectangle(this.x, this.y, 1, 1, 0xff0000);
+                (this.scene as GameScene).renderLayers.debug.add(this.currPositionMarker);
+            }
+            this.currPositionMarker.x = this.x;
+            this.currPositionMarker.y = this.y;
         }
-        this.currPositionMarker.x = this.x;
-        this.currPositionMarker.y = this.y;
     }
 
     getCurrentLayer() {

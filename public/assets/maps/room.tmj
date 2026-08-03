@@ -334,19 +334,6 @@
                  "width":80,
                  "x":340,
                  "y":332
-                }, 
-                {
-                 "gid":16,
-                 "height":80,
-                 "id":52,
-                 "name":"",
-                 "opacity":1,
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":80,
-                 "x":333.5,
-                 "y":236.5
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -378,7 +365,7 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":57.9999999999997,
+                 "width":58,
                  "x":324,
                  "y":460
                 }],
@@ -392,7 +379,20 @@
          "draworder":"topdown",
          "id":13,
          "name":"computer",
-         "objects":[],
+         "objects":[
+                {
+                 "gid":16,
+                 "height":80,
+                 "id":63,
+                 "name":"",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":80,
+                 "x":332,
+                 "y":234
+                }],
          "opacity":1,
          "type":"objectgroup",
          "visible":true,
@@ -492,6 +492,19 @@
                  "width":0,
                  "x":353,
                  "y":449
+                }, 
+                {
+                 "height":0,
+                 "id":62,
+                 "name":"laptop",
+                 "opacity":1,
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":323,
+                 "y":223
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -500,7 +513,7 @@
          "y":0
         }],
  "nextlayerid":20,
- "nextobjectid":62,
+ "nextobjectid":64,
  "orientation":"isometric",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

@@ -1,4 +1,4 @@
-import Phaser, { GameObjects, Scene } from 'phaser';
+import Phaser, { Game, GameObjects, Scene } from 'phaser';
 import * as Transformations from "../utils/transformations";
 import GameScene from '../scenes/GameScene';
 import * as Contour from "./contour";
@@ -379,15 +379,17 @@ export default class IsoMap {
 
         // Visual check: draw the resulting depth line directly over the sprite so it's
         // obvious in-game whether it actually traces the intended front boundary.
-        const lineGfx = this.scene.add.graphics();
-        this.scene.renderLayers.debug.add(lineGfx);
-        lineGfx.lineStyle(2, 0x00ff00, 1);
-        for (const seg of segments) {
-            lineGfx.lineBetween(seg.x0, seg.y0, seg.x1, seg.y1);
-        }
-        lineGfx.fillStyle(0x00ff00, 1);
-        for (const p of depthPoints) {
-            lineGfx.fillCircle(p.x, p.y, 2);
+        if (this.scene.matter.world.drawDebug) {
+            const lineGfx = this.scene.add.graphics();
+            this.scene.renderLayers.debug.add(lineGfx);
+            lineGfx.lineStyle(2, 0x00ff00, 1);
+            for (const seg of segments) {
+                lineGfx.lineBetween(seg.x0, seg.y0, seg.x1, seg.y1);
+            }
+            lineGfx.fillStyle(0x00ff00, 1);
+            for (const p of depthPoints) {
+                lineGfx.fillCircle(p.x, p.y, 2);
+            }
         }
 
         this.depthSortedSprites.push({ sprite, segments });

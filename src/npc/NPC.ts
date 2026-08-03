@@ -5,21 +5,10 @@ import TextBox, { type DialogueLine } from '../UI/TextBox';
 
 type Direction = 'north' | 'south' | 'east' | 'west' | 'northeast' | 'northwest' | 'southeast' | 'southwest';
 
-const FACING_ANIMATION: Record<Direction, string> = {
-    north: 'north',
-    south: 'south',
-    northeast: 'northeast',
-    northwest: 'northwest',
-    southeast: 'southeast',
-    southwest: 'southwest',
-    east: 'southeast',
-    west: 'southwest',
-};
-
-export default class NPC extends Phaser.Physics.Matter.Sprite {
+export default abstract class NPC extends Phaser.Physics.Matter.Sprite {
     public dialogue: DialogueLine[];
     public name: string;
-    private textBox: TextBox;
+    protected textBox: TextBox;
 
     constructor(scene: GameScene, x: number, y: number, texture: string, name: string, dialogue: DialogueLine[]) {
         super(scene.matter.world, x, y, texture);
@@ -37,26 +26,10 @@ export default class NPC extends Phaser.Physics.Matter.Sprite {
         this.textBox.setVisible(false, this);
     }
 
-    interact(player: Player) {
-        const direction = this.getDirectionTo(player);
-        this.anims.play(`${this.texture.key}-${FACING_ANIMATION[direction]}`, true);
-
-        if (this.dialogue.length === 0) {
-            return;
-        }
-        else if (this.textBox.isVisible()){
-            this.textBox.nextDialogue(this);
-            if (!this.textBox.isVisible()) {
-                player.busy = false;
-            }
-        }
-        else {
-            this.textBox.setVisible(true, this);
-        }
-    }
+    abstract interact(player: Player) : any;
 
 
-    private getDirectionTo(player: Player): Direction {
+    protected getDirectionTo(player: Player): Direction {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const angle = Phaser.Math.Angle.WrapDegrees(
@@ -77,42 +50,5 @@ export default class NPC extends Phaser.Physics.Matter.Sprite {
         return direction;
     }
 
-    createAnimation() {
-        const directions = [
-            "south",
-            "southwest",
-            "southeast",
-            "north",
-            "northwest",
-            "northeast"
-        ];
-
-        let current = 0;
-
-        directions.forEach(direction => {
-            const key = `${this.texture.key}-${direction}`;
-
-            this.scene.anims.create({
-                key,
-                frames: this.scene.anims.generateFrameNumbers(this.texture.key, {
-                    start: current,
-                    end: current + 5
-                }),
-                frameRate: 10,
-                repeat: -1
-            });
-
-            current += 6;
-        });
-
-        this.scene.anims.create({
-        key: `${this.texture.key}-portrait`,
-        frames: this.scene.anims.generateFrameNumbers(this.texture.key, {
-            start: 0,  // south animation frames
-            end: 5
-        }),
-        frameRate: 10,
-        repeat: -1
-    });
-    }
+    abstract createAnimation(): void;
 }

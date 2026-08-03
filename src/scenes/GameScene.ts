@@ -9,6 +9,8 @@ import NPC from '../npc/NPC';
 import TextBox, { type DialogueLine } from '../UI/TextBox';
 import WebFontFile from '../utils/WebFontFile';
 import { createPixelBitmapFont } from '../utils/PixelBitmapFont';
+import SlimeNPC from '../npc/SlimeNPC';
+import ComputerNPC from '../npc/ComputerNPC';
 
 
 export default class GameScene extends Phaser.Scene {
@@ -103,6 +105,10 @@ export default class GameScene extends Phaser.Scene {
         this.load.spritesheet('wall_decor', 'assets/images/room/wall_decor.png', {
             frameWidth: 80,
             frameHeight: 80
+        });
+        this.load.spritesheet('laptop', 'assets/sprites/laptop/laptop.png', {
+            frameWidth: 29,
+            frameHeight: 30
         });
         
 
@@ -287,12 +293,15 @@ export default class GameScene extends Phaser.Scene {
             "Here go give it a try, you can see that walking off the edge is impossible! 100% safe and sound!"
         ]
 
+        const laptopDialogue = ["There's something interesting on this laptop..."]
+
         this.spawnSlime(farmMap, "Slime_Black", "black", "Black Slime", blackSlimeDialogue);
         this.spawnSlime(farmMap, "Slime_Pink", "pink", "Pink Slime", pinkSlimeDialogue);
         this.spawnSlime(farmMap, "Slime_Blue", "blue", "🔵", blueSlimeDialogue);
         this.spawnSlime(farmMap, "Slime_Green", "green", "Green Slime", greenSlimeDialogue);
         this.spawnSlime(farmMap, "Slime_White", "white", "White Slime", whiteSlimeDialogue);
         this.spawnSlime(farmMap, "Slime_Yellow", "yellow", "Bob", yellowSlimeDialogue);
+        this.spawnLaptop(roomMap, "laptop", "laptop", laptopDialogue);
         this.movementController = new MovementController(this.isomap, this.player);
 
     }
@@ -306,10 +315,17 @@ export default class GameScene extends Phaser.Scene {
 
     spawnSlime(map: IsoMap, spawnName: string, color: string, name: string, dialogue: DialogueLine[]) {
         const spawn = map.getSpawnPoint(spawnName);
-        const slime = new NPC(this, spawn.x, spawn.y, `slimes_${color}`, name, dialogue);
+        const slime = new SlimeNPC(this, spawn.x, spawn.y, `slimes_${color}`, name, dialogue);
         this.interactables.push(slime);
         map.addNPC(slime);
         slime.play(`slimes_${color}-south`);
+    }
+
+    spawnLaptop(map: IsoMap, spawnName: string, name: string, dialogue: DialogueLine[]) {
+        const spawn = map.getSpawnPoint(spawnName);
+        const laptop = new ComputerNPC(this, spawn.x, spawn.y, `laptop`, name, dialogue);
+        this.interactables.push(laptop);
+        map.addNPC(laptop);
     }
 
 

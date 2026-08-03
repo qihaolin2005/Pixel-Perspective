@@ -70,7 +70,6 @@ export default class MovementController {
             }
             this.player.direction = dir;
 
-        this.player.debug();
         this.player.update();
     }
 
