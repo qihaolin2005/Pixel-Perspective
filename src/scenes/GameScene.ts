@@ -205,7 +205,7 @@ export default class GameScene extends Phaser.Scene {
         farmMap.setVisible(false);
         roomMap.setVisible(false);
 
-        this.launchMap('room', "SpawnPoint", {});
+        this.launchMap('farm', "SpawnPoint", {});
 
 
         this.player.addToScene();

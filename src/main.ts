@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import GameScene from './scenes/GameScene';
-import { Analytics } from "@vercel/analytics";
+import { inject } from "@vercel/analytics";
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -36,5 +36,5 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 console.log('game start');
-Analytics();
+inject();
 new Phaser.Game(config);
