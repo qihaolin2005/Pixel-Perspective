@@ -26,6 +26,7 @@ export default class GameScene extends Phaser.Scene {
     public renderLayers!: RenderLayers;
     public soundManager!: SoundManager;
     public tutorial!: Tutorial;
+    private started = false;
 
     
     constructor() {
@@ -45,11 +46,19 @@ export default class GameScene extends Phaser.Scene {
             frameHeight: 160
         });
         
-        this.load.spritesheet('player_idle', 'assets/sprites/MPlayer 1 idle.png', {
+        this.load.spritesheet('m_player_idle', 'assets/sprites/MPlayer 1 idle.png', {
             frameWidth: 48,
             frameHeight: 48
         });
-        this.load.spritesheet('player_walking', 'assets/sprites/MPlayer 1 walking.png', {
+        this.load.spritesheet('m_player_walking', 'assets/sprites/MPlayer 1 walking.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+        this.load.spritesheet('f_player_idle', 'assets/sprites/FPlayer 1 idle.png', {
+            frameWidth: 48,
+            frameHeight: 48
+        });
+        this.load.spritesheet('f_player_walking', 'assets/sprites/FPlayer 1 walking.png', {
             frameWidth: 48,
             frameHeight: 48
         });
@@ -224,10 +233,12 @@ export default class GameScene extends Phaser.Scene {
         this.mapMap.set('farm', farmMap);
 
         this.cameras.main.setZoom(3);
-        this.player = new Player(this, 0, 0, 'player_idle');
 
+        this.tutorial = new Tutorial(this, () => this.startGame());
+
+        // The reveal manager only reads the player in update(), which is gated
+        // until the game starts, so it can be built now and given a player later.
         this.reveal = new RevealManager(this);
-        this.reveal.setPlayer(this.player);
         farmMap.applyObjectLayerWithReveal(this.reveal);
         roomMap.applyObjectLayerWithReveal(this.reveal);
 
@@ -250,15 +261,14 @@ export default class GameScene extends Phaser.Scene {
         );
         roomMap.setbackground(roomBG);
 
-        farmMap.setVisible(false);
+        // The farm stays up behind the tutorial as a backdrop, framed on the
+        // spot the player is about to appear in. `this.isomap` deliberately
+        // stays unset until startGame calls launchMap, since nothing may touch
+        // the player before then.
         roomMap.setVisible(false);
 
-        this.launchMap('farm', "SpawnPoint", {});
-
-
-        this.player.addToScene();
-
-        this.cameras.main.startFollow(this.player, true);
+        const spawn = farmMap.getSpawnPoint("SpawnPoint");
+        this.cameras.main.centerOn(spawn.x, spawn.y);
 
         const blackSlimeDialogue = 
         ["Oh! A new visitor!", "Welcome to Pixel Perspective, or at least that's what everyone calls this place.", 
@@ -350,13 +360,39 @@ export default class GameScene extends Phaser.Scene {
         this.spawnSlime(farmMap, "Slime_White", "white", "White Slime", whiteSlimeDialogue);
         this.spawnSlime(farmMap, "Slime_Yellow", "yellow", "Bob", yellowSlimeDialogue);
         this.spawnLaptop(roomMap, "laptop", "laptop", laptopDialogue);
-        this.movementController = new MovementController(this.isomap, this.player);
-
-        this.tutorial = new Tutorial(this);
 
         this.setGameCursor();
         this.createSoundManager();
 
+    }
+
+    // Runs off the tutorial's PLAY button, so the player only comes into
+    // existence once a character has been picked. This is the whole of what
+    // used to sit inline in create() and depends on the player.
+    private startGame() {
+        const texture = this.tutorial.selectedCharacter;
+
+        // PLAY stays locked until a tile is latched down, so this should be
+        // unreachable; bailing beats spawning a player with no texture.
+        if (!texture) {
+            return;
+        }
+
+        this.player = new Player(this, 0, 0, texture);
+        this.reveal.setPlayer(this.player);
+
+        // addToScene throws away the constructor's body and builds a new one via
+        // setRectangle, so the spawn has to be applied after it. launchMap moves
+        // the finished body onto the spawn point, exactly as a room transition
+        // does to an already-placed player.
+        this.player.addToScene();
+        this.launchMap('farm', "SpawnPoint", {});
+
+        this.cameras.main.startFollow(this.player, true);
+        this.movementController = new MovementController(this.isomap, this.player);
+
+        this.tutorial.setVisible(false);
+        this.started = true;
     }
 
     // Replaces the OS cursor with the pixel pointer. A CSS cursor can't be
@@ -413,6 +449,12 @@ export default class GameScene extends Phaser.Scene {
     }
 
     update(time: number, delta: number) {
+        // None of these exist while the tutorial is up: the player, the movement
+        // controller and this.isomap are all created by startGame.
+        if (!this.started) {
+            return;
+        }
+
         this.movementController.update(time, delta);
         this.isomap.updateDepthSorting(this.player);
         this.reveal.update();

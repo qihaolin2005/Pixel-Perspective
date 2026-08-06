@@ -17,10 +17,11 @@ const LOCKED_TINT = 0x8a8a8a;
 
 // One tile per character. `texture` is hung on the tile under a data key of the
 // same name, so whatever consumes the choice reads it off the button rather
-// than tracking tile order.
+// than tracking tile order. It is the Player texture prefix verbatim, which
+// Player suffixes with _idle and _walking.
 const CHARACTERS = [
-    { portrait: "MPlayer_portrait", texture: "male_player" },
-    { portrait: "FPlayer_portrait", texture: "female_player" },
+    { portrait: "MPlayer_portrait", texture: "m_player" },
+    { portrait: "FPlayer_portrait", texture: "f_player" },
 ];
 
 // Measured off the canvas art, in unscaled pixels. Both canvases reserve their

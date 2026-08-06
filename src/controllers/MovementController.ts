@@ -23,39 +23,39 @@ export default class MovementController {
         if (!this.player.busy) {
             const speed = 2;
             
-            if (this.player.cursors.up.isDown && this.player.cursors.left.isDown) {
+            if (this.player.keys.up.isDown && this.player.keys.left.isDown) {
                 vx = -2/3 * speed;
                 vy = -1/3 * speed;
                 dir = 'northwest';
             }
-            else if (this.player.cursors.up.isDown && this.player.cursors.right.isDown) {
+            else if (this.player.keys.up.isDown && this.player.keys.right.isDown) {
                 vx = 2/3 * speed;
                 vy = -1/3 * speed;
                 dir = 'northeast';
             }
-            else if (this.player.cursors.down.isDown && this.player.cursors.left.isDown) {
+            else if (this.player.keys.down.isDown && this.player.keys.left.isDown) {
                 vx = -2/3 * speed;
                 vy = 1/3 * speed;
                 dir = 'southwest';
             }
-            else if (this.player.cursors.down.isDown && this.player.cursors.right.isDown) {
+            else if (this.player.keys.down.isDown && this.player.keys.right.isDown) {
                 vx = 2/3 * speed;
                 vy = 1/3 * speed;
                 dir = 'southeast';
             }
-            else if (this.player.cursors.left.isDown) {
+            else if (this.player.keys.left.isDown) {
                 vx = -speed;
                 dir = 'west';
             }
-            else if (this.player.cursors.right.isDown) {
+            else if (this.player.keys.right.isDown) {
                 vx = speed;
                 dir = 'east';
             }
-            else if (this.player.cursors.up.isDown) {
+            else if (this.player.keys.up.isDown) {
                 vy = -speed;
                 dir = 'north';
             }
-            else if (this.player.cursors.down.isDown) {
+            else if (this.player.keys.down.isDown) {
                 vy = speed;
                 dir = 'south';
             }

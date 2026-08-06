@@ -2,15 +2,27 @@ import Phaser from 'phaser';
 import GameScene from '../scenes/GameScene';
 import InteractButton from '../UI/InteractButton';
 
+// Named by direction rather than by letter, so the movement logic reads as
+// up/left/down/right no matter which keys end up bound to them.
+export type MovementKeys = {
+    up: Phaser.Input.Keyboard.Key;
+    down: Phaser.Input.Keyboard.Key;
+    left: Phaser.Input.Keyboard.Key;
+    right: Phaser.Input.Keyboard.Key;
+};
+
 export default class Player extends Phaser.Physics.Matter.Sprite {
     private currPositionMarker: Phaser.GameObjects.Rectangle;
-    public cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+    public keys!: MovementKeys;
     public direction: string;
     private interactButton: InteractButton;
+    private textureKey: string;
     public busy: boolean;
+    
 
     constructor (scene: GameScene, x: number, y: number, texture: string, direction: string = "west") {
-        super(scene.matter.world, x, y, texture);
+        super(scene.matter.world, x, y, `${texture}_idle`);
+        this.textureKey = texture;
         this.createAnimation();
         this.direction = direction;
         this.interactButton = new InteractButton(scene, "enter").setVisible(false);
@@ -28,7 +40,13 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
         this.setFriction(0);
         this.setFrictionAir(0);
         this.scene.matter.world.on('afterupdate', this.snapWhenStill);
-        this.cursors = this.scene.input.keyboard!.createCursorKeys();
+        // WASD rather than the arrow keys, matching what the tutorial teaches.
+        this.keys = this.scene.input.keyboard!.addKeys({
+            up: Phaser.Input.Keyboard.KeyCodes.W,
+            left: Phaser.Input.Keyboard.KeyCodes.A,
+            down: Phaser.Input.Keyboard.KeyCodes.S,
+            right: Phaser.Input.Keyboard.KeyCodes.D,
+        }) as MovementKeys;
     }
 
     debug(){
@@ -79,7 +97,7 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
         directions.forEach(direction => {
             this.anims.create({
                 key: `walking-${direction}`,
-                frames: this.anims.generateFrameNumbers('player_walking', {
+                frames: this.anims.generateFrameNumbers(`${this.textureKey}_walking`, {
                     start: current,
                     end: current + 3,
                 }),
@@ -89,7 +107,7 @@ export default class Player extends Phaser.Physics.Matter.Sprite {
             });
             this.anims.create({
                 key: `idle-${direction}`,
-                frames: this.anims.generateFrameNumbers('player_idle', {
+                frames: this.anims.generateFrameNumbers(`${this.textureKey}_idle`, {
                     start: current,
                     end: current + 3,
                 }),
