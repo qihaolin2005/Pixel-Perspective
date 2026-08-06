@@ -11,6 +11,8 @@ import WebFontFile from '../utils/WebFontFile';
 import { createPixelBitmapFont } from '../utils/PixelBitmapFont';
 import SlimeNPC from '../npc/SlimeNPC';
 import ComputerNPC from '../npc/ComputerNPC';
+import SoundManager from '../sound/SoundManager';
+import Tutorial from '../UI/Tutorial';
 
 
 export default class GameScene extends Phaser.Scene {
@@ -22,6 +24,8 @@ export default class GameScene extends Phaser.Scene {
     private isomap! : IsoMap;
     private mapMap!: Map<string, IsoMap>;
     public renderLayers!: RenderLayers;
+    public soundManager!: SoundManager;
+    public tutorial!: Tutorial;
 
     
     constructor() {
@@ -81,10 +85,41 @@ export default class GameScene extends Phaser.Scene {
             frameWidth: 39,
             frameHeight: 36
         });
+
+        const loadKey = (name: string) => {
+            this.load.spritesheet(`key_${name}`, `assets/keys/${name.toUpperCase()}.png`, {
+                frameWidth: 19,
+                frameHeight: 21
+            });
+        };
+        loadKey("w");
+        loadKey("a");
+        loadKey("s");
+        loadKey("d");
+
         this.load.image('orig_big', 'assets/backgrounds/orig_big.png');
         this.load.image('orig_big_flipped', 'assets/backgrounds/orig_big_flipped.png');
         this.load.image('orange_background', 'assets/backgrounds/orange_background.png');
-        this.load.image('textbox', 'assets/images/UI_TextBox.png');
+
+        this.load.image('textbox', 'assets/UI/UI_TextBox.png');
+        // 2x2 sheet: 0 = blank, 1 = blank pressed, 2 = PLAY, 3 = PLAY pressed.
+        this.load.spritesheet('big_play_button', 'assets/UI/UI_Big_Play_Button.png', {
+            frameWidth: 96,
+            frameHeight: 32
+        });
+        // Frames run raised (0) -> pressed (2).
+        this.load.spritesheet('portrait_button', 'assets/UI/portrait-button.png', {
+            frameWidth: 48,
+            frameHeight: 28
+        });
+        this.load.spritesheet('FPlayer_portrait', 'assets/sprites/FPlayer_portrait.png', {
+            frameWidth: 21,
+            frameHeight: 26
+        });
+        this.load.spritesheet('MPlayer_portrait', 'assets/sprites/MPlayer_portrait.png', {
+            frameWidth: 21,
+            frameHeight: 26
+        });
 
         this.load.spritesheet('floor', 'assets/images/room/floor.png', {
             frameWidth: 80,
@@ -110,7 +145,20 @@ export default class GameScene extends Phaser.Scene {
             frameWidth: 29,
             frameHeight: 30
         });
+        this.load.spritesheet('mouse_pointer', 'assets/keys/mouse-pointer.png', {
+            frameWidth: 16,
+            frameHeight: 16,
+        });
+        this.load.image('controls_canvas', 'assets/UI/controls_canvas.png');
+        this.load.image('select_canvas', 'assets/UI/select_canvas.png');
+        this.load.spritesheet('next_button', 'assets/UI/next_button.png', {
+            frameWidth: 32,
+            frameHeight: 32,
+        });
         
+        this.load.audio('background_music', 'assets/sounds/music/supersonic_rocketship.mp3');
+        this.load.audio('footstep', 'assets/sounds/effects/footstep.mp3');
+
 
         this.load.addFile(new WebFontFile(this.load, 'PixelFont', 'assets/fonts/monogram/ttf/monogram.ttf'));
         this.load.json('monogramPixelMask', 'assets/fonts/monogram/bitmap/monogram-bitmap.json');
@@ -304,6 +352,64 @@ export default class GameScene extends Phaser.Scene {
         this.spawnLaptop(roomMap, "laptop", "laptop", laptopDialogue);
         this.movementController = new MovementController(this.isomap, this.player);
 
+        this.tutorial = new Tutorial(this);
+
+        this.setGameCursor();
+        this.createSoundManager();
+
+    }
+
+    // Replaces the OS cursor with the pixel pointer. A CSS cursor can't be
+    // scaled, and the 16x16 art is far too small against a 3x zoomed game, so
+    // the frame is redrawn into a larger canvas with smoothing off and handed
+    // over as a data URL. The hotspot is the arrow's tip, measured off the
+    // sprite, and has to be scaled along with everything else.
+    private setGameCursor() {
+        const CURSOR_SCALE = 3;
+        const TIP_X = 3;
+        const TIP_Y = 2;
+
+        const KEY = 'cursor_pointer';
+
+        // createCanvas refuses a key that is already taken, so on a scene
+        // restart the redraw is skipped and the existing texture reused rather
+        // than silently leaving the game on the OS cursor.
+        let cursor = this.textures.exists(KEY)
+            ? this.textures.get(KEY) as Phaser.Textures.CanvasTexture
+            : null;
+
+        if (!cursor) {
+            const frame = this.textures.getFrame('mouse_pointer', 1);
+
+            cursor = this.textures.createCanvas(
+                KEY,
+                frame.width * CURSOR_SCALE,
+                frame.height * CURSOR_SCALE
+            );
+
+            if (!cursor) {
+                return;
+            }
+
+            const ctx = cursor.getContext();
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(
+                frame.source.image as CanvasImageSource,
+                frame.cutX, frame.cutY, frame.width, frame.height,
+                0, 0, frame.width * CURSOR_SCALE, frame.height * CURSOR_SCALE
+            );
+            cursor.refresh();
+        }
+
+        this.input.setDefaultCursor(
+            `url(${cursor.getCanvas().toDataURL()}) ${TIP_X * CURSOR_SCALE} ${TIP_Y * CURSOR_SCALE}, pointer`
+        );
+    }
+
+    createSoundManager() {
+        this.soundManager = new SoundManager(this);
+        this.soundManager.add("background_music", {loop: true, volume: .5});
+        this.soundManager.add("footstep", {loop: true, volume: .2});
     }
 
     update(time: number, delta: number) {

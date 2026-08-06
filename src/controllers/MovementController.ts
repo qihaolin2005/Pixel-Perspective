@@ -1,6 +1,8 @@
 import * as Transformations from '../utils/transformations';
 import IsoMap from '../map/IsoMap';
 import Player from '../player/Player';
+import { Scene } from 'phaser';
+import type GameScene from '../scenes/GameScene';
 
 export default class MovementController {
     private isoMap: IsoMap;
@@ -64,11 +66,16 @@ export default class MovementController {
         }
 
         if (vx !== 0 || vy !== 0) {
-                this.player.anims.play(`walking-${dir}`, true);
-            } else {
-                this.player.anims.play(`idle-${dir}`, true);
+            this.player.anims.play(`walking-${dir}`, true);
+            if (!(this.player.scene as GameScene).soundManager.isPlaying('footstep')) {
+                (this.player.scene as GameScene).soundManager.play('footstep');
             }
-            this.player.direction = dir;
+
+        } else {
+            this.player.anims.play(`idle-${dir}`, true);
+            (this.player.scene as GameScene).soundManager.pause('footstep');
+        }
+        this.player.direction = dir;
 
         this.player.update();
     }
